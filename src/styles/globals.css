@@ -1,0 +1,125 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Cinzel', serif;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen;
+  }
+}
+
+@layer components {
+  .card-base {
+    @apply relative bg-card-bg border-2 border-card-border rounded-lg shadow-card;
+    @apply bg-card-pattern backdrop-blur-sm;
+    width: 64px;
+    height: 89px;
+    perspective: 1000px;
+  }
+  
+  @screen sm {
+    .card-base {
+      width: 80px;
+      height: 112px;
+    }
+  }
+  
+  .card-large {
+    width: 96px;
+    height: 134px;
+  }
+  
+  @screen sm {
+    .card-large {
+      width: 120px;
+      height: 168px;
+    }
+  }
+  
+  .card-content {
+    @apply absolute inset-0 flex flex-col items-center justify-center p-2;
+    @apply text-xs font-medium text-gray-800;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+  }
+  
+  .card-hoverable {
+    @apply transition-all duration-300 cursor-pointer;
+    @apply hover:shadow-card-hover hover:-translate-y-2 hover:scale-105;
+  }
+  
+  .card-selectable {
+    @apply ring-2 ring-offset-2 ring-blue-400 ring-opacity-50;
+  }
+  
+  .queen-card {
+    @apply bg-gradient-to-br from-pink-100 to-purple-100 border-queen-pink;
+    @apply shadow-queen;
+  }
+  
+  .king-card {
+    @apply bg-gradient-to-br from-yellow-100 to-orange-100 border-king-gold;
+  }
+  
+  .knight-card {
+    @apply bg-gradient-to-br from-gray-100 to-blue-100 border-knight-silver;
+  }
+  
+  .dragon-card {
+    @apply bg-gradient-to-br from-red-100 to-orange-100 border-dragon-red;
+  }
+  
+  .wand-card {
+    @apply bg-gradient-to-br from-blue-100 to-indigo-100 border-wand-blue;
+  }
+  
+  .potion-card {
+    @apply bg-gradient-to-br from-green-100 to-teal-100 border-potion-green;
+  }
+  
+  .number-card {
+    @apply bg-gradient-to-br from-gray-50 to-gray-100 border-gray-400;
+  }
+  
+  .game-button {
+    @apply px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600;
+    @apply text-white font-semibold rounded-lg shadow-lg;
+    @apply hover:from-blue-600 hover:to-purple-700;
+    @apply transform hover:scale-105 transition-all duration-200;
+    @apply focus:outline-none focus:ring-4 focus:ring-purple-300;
+  }
+  
+  .game-input {
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg;
+    @apply focus:border-purple-500 focus:ring-4 focus:ring-purple-200;
+    @apply text-gray-800 font-medium bg-white;
+    @apply transition-all duration-200;
+  }
+  
+  .game-card {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+    @apply rounded-xl shadow-xl p-6;
+  }
+  
+  .turn-indicator {
+    @apply absolute -top-2 -right-2 w-6 h-6;
+    @apply bg-gradient-to-r from-yellow-400 to-orange-500;
+    @apply rounded-full animate-pulse-slow shadow-lg;
+    @apply flex items-center justify-center text-white text-xs font-bold;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+}

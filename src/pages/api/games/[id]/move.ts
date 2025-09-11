@@ -1,0 +1,98 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { SleepingQueensGame } from '../../../../game/game';
+import { GameMove } from '../../../../game/types';
+import { supabase } from '../../../../lib/supabase';
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { id: gameId } = req.query;
+    const move: GameMove = req.body;
+
+    if (!gameId || typeof gameId !== 'string') {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    if (!move || !move.playerId || !move.type) {
+      return res.status(400).json({ error: 'Invalid move data' });
+    }
+
+    // Get current game state
+    const { data: gameData, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .eq('is_active', true)
+      .single();
+
+    if (gameError || !gameData) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Load game engine
+    const game = new SleepingQueensGame(gameData.state);
+
+    // Validate and execute move
+    const result = game.playMove(move);
+
+    if (!result.isValid) {
+      return res.status(400).json({ 
+        error: result.error,
+        isValid: false 
+      });
+    }
+
+    const newGameState = game.getState();
+
+    // Update game in database
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({ 
+        state: newGameState,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId);
+
+    if (updateError) {
+      console.error('Database update error:', updateError);
+      return res.status(500).json({ error: 'Failed to save game state' });
+    }
+
+    // Log the move - first check if player exists in players table
+    const { data: playerExists } = await supabase
+      .from('players')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('user_id', move.playerId)
+      .single();
+
+    if (playerExists) {
+      const { error: moveError } = await supabase.from('game_moves').insert({
+        game_id: gameId,
+        player_id: move.playerId,
+        move_data: move,
+      });
+
+      if (moveError) {
+        console.error('Move logging error:', moveError);
+        // Continue anyway, as the main game state is saved
+      }
+    } else {
+      console.warn('Player not found in players table, skipping move logging');
+    }
+
+    res.status(200).json({
+      isValid: true,
+      gameState: newGameState,
+    });
+  } catch (error) {
+    console.error('Move execution error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
