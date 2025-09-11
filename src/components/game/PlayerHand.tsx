@@ -135,29 +135,9 @@ export function PlayerHand({
 
   return (
     <div className={clsx('relative', className)}>
-        {/* Hand Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className={clsx(
-              'flex items-center space-x-2 px-3 py-2 rounded-lg border',
-              isCurrentPlayer 
-                ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
-                : 'bg-gray-500/20 border-gray-400/50 text-gray-300'
-            )}>
-              <Hand className="h-4 w-4" />
-              <span className="font-medium">{player.name}</span>
-              <span className="text-sm opacity-75">({hand.length} cards)</span>
-            </div>
-            
-            {isCurrentTurn && isCurrentPlayer && (
-              <div className="flex items-center space-x-1 px-2 py-1 bg-green-500/20 border border-green-400/50 rounded-lg">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs text-green-300 font-medium">Your Turn</span>
-              </div>
-            )}
-          </div>
-
-          {isCurrentPlayer && hand.length > 0 && (
+        {/* Hand Controls - Only show expand/collapse button */}
+        {isCurrentPlayer && hand.length > 0 && (
+          <div className="flex justify-end mb-2">
             <Button
               variant="ghost"
               size="sm"
@@ -166,8 +146,8 @@ export function PlayerHand({
             >
               {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Queens Display - Always visible to all players */}
         {queens.length > 0 && (

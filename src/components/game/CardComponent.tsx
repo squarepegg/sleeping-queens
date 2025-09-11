@@ -155,8 +155,8 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
     }
     
     if (card.type === 'number') {
-      const numberCard = card as NumberCard;
-      return `Value: ${numberCard.value}`;
+      // Don't show "Value: x" since the number is already displayed in corners
+      return '';
     }
 
     return card.description || '';
