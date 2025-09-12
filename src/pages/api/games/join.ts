@@ -30,7 +30,7 @@ export default async function handler(
     }
 
     // Load game state
-    const game = new SleepingQueensGame(gameData.state);
+    const game = new SleepingQueensGame((gameData as any).state);
 
     // Check if player already in game
     const existingPlayer = game.getState().players.find(p => p.name === username);

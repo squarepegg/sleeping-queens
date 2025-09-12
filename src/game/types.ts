@@ -38,7 +38,7 @@ export interface Player {
 }
 
 export interface GameMove {
-  type: 'play_king' | 'play_knight' | 'play_dragon' | 'play_wand' | 'play_potion' | 'play_jester' | 'play_math' | 'discard';
+  type: 'play_king' | 'play_knight' | 'play_dragon' | 'play_wand' | 'play_potion' | 'play_jester' | 'play_math' | 'discard' | 'stage_card';
   playerId: string;
   cards: Card[];
   targetCard?: Card;
@@ -55,6 +55,7 @@ export interface GameState {
   id: string;
   players: Player[];
   currentPlayerIndex: number;
+  currentPlayerId: string | null;
   sleepingQueens: Queen[];
   deck: Card[];
   discardPile: Card[];
@@ -64,10 +65,22 @@ export interface GameState {
   updatedAt: number;
   roomCode: string;
   maxPlayers: number;
+  stagedCard?: {
+    cards: Card[];
+    playerId: string;
+    action: string;
+  };
   jesterReveal?: {
     revealedCard: Card;
     targetPlayerId: string;
     waitingForQueenSelection: boolean;
+  };
+  pendingKnightAttack?: {
+    attacker: string;
+    target: string;
+    targetQueen: Queen;
+    timestamp: number;
+    defenseDeadline: number; // When defense window expires
   };
 }
 

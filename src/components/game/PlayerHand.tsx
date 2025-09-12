@@ -9,8 +9,6 @@ import {
   Hand,
   Calculator,
   Trash2,
-  Eye,
-  EyeOff,
   RotateCcw,
   PlayCircle,
   Crown
@@ -27,6 +25,8 @@ export interface PlayerHandProps {
   selectedQueen?: Queen | null;
   onQueenSelect?: (queen: Queen) => void;
   canSelectQueen?: boolean;
+  onDragStart?: (card: Card) => void;
+  onDragEnd?: () => void;
   className?: string;
 }
 
@@ -41,9 +41,11 @@ export function PlayerHand({
   selectedQueen,
   onQueenSelect,
   canSelectQueen = false,
+  onDragStart,
+  onDragEnd,
   className,
 }: PlayerHandProps) {
-  const [isExpanded, setIsExpanded] = useState(isCurrentPlayer);
+  // Always show the current player's hand - no need to hide it in Sleeping Queens
   const [mathMode, setMathMode] = useState(false);
 
   const hand = player.hand || [];
@@ -101,6 +103,7 @@ export function PlayerHand({
   const renderCard = useCallback((card: Card, index: number) => {
     const isSelected = selectedCards.some(c => c.id === card.id);
     const isActionCard = ['king', 'knight', 'dragon', 'wand', 'potion'].includes(card.type);
+    const canDrag = isCurrentPlayer && isCurrentTurn;
     
     return (
       <div
@@ -108,10 +111,16 @@ export function PlayerHand({
         className={clsx(
           'transition-all duration-200',
           {
-            'hover:-translate-y-2': isCurrentPlayer,
             'cursor-pointer': isCurrentPlayer && isCurrentTurn,
           }
         )}
+        draggable={canDrag}
+        onDragStart={canDrag ? (e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('cardType', card.type);
+          onDragStart?.(card);
+        } : undefined}
+        onDragEnd={onDragEnd}
       >
         <CardComponent
           card={card}
@@ -123,11 +132,12 @@ export function PlayerHand({
           className={clsx({
             'ring-2 ring-blue-400': mathMode && card.type === 'number',
             'ring-2 ring-green-400': isActionCard && isCurrentPlayer && isCurrentTurn,
+            'cursor-move': canDrag,
           })}
         />
       </div>
     );
-  }, [selectedCards, isCurrentPlayer, isCurrentTurn, mathMode, handleCardClick]);
+  }, [selectedCards, isCurrentPlayer, isCurrentTurn, mathMode, handleCardClick, onDragStart, onDragEnd]);
 
   if (!isCurrentPlayer && hand.length === 0) {
     return null;
@@ -135,22 +145,9 @@ export function PlayerHand({
 
   return (
     <div className={clsx('relative', className)}>
-        {/* Hand Controls - Only show expand/collapse button */}
-        {isCurrentPlayer && hand.length > 0 && (
-          <div className="flex justify-end mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-gray-400 hover:text-white"
-            >
-              {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-          </div>
-        )}
 
-        {/* Queens Display - Always visible to all players */}
-        {queens.length > 0 && (
+        {/* Queens for non-current players - always visible */}
+        {!isCurrentPlayer && queens.length > 0 && (
           <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-400/20 rounded-lg">
             <div className="flex items-center space-x-2 mb-3">
               <Crown className="h-4 w-4 text-yellow-400" />
@@ -161,7 +158,7 @@ export function PlayerHand({
             <div className="flex flex-wrap gap-3">
               {queens.map((queen, index) => {
                 const isSelected = selectedQueen?.id === queen.id;
-                const isSelectable = canSelectQueen && !isCurrentPlayer; // Can only target other players' queens
+                const isSelectable = canSelectQueen && !isCurrentPlayer;
                 
                 return (
                   <motion.div
@@ -189,7 +186,6 @@ export function PlayerHand({
                     {isSelectable && (
                       <div className="absolute inset-0 border-2 border-dashed border-red-400/50 rounded-lg pointer-events-none" />
                     )}
-                    {/* Queen Name */}
                     <div className="mt-1 text-xs text-yellow-200 font-medium text-center max-w-[80px] truncate">
                       {queen.name}
                     </div>
@@ -200,9 +196,9 @@ export function PlayerHand({
           </div>
         )}
 
-        {/* Hand Cards */}
+        {/* Hand for current player */}
         <AnimatePresence>
-          {(isCurrentPlayer && isExpanded) && (
+          {isCurrentPlayer && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
@@ -213,33 +209,67 @@ export function PlayerHand({
               <div
                 className={clsx(
                   'flex flex-wrap gap-2 p-4 rounded-lg border-2 border-dashed',
-                  isCurrentPlayer 
-                    ? 'border-blue-400/30 bg-blue-500/5'
-                    : 'border-gray-400/30 bg-gray-500/5',
+                  'border-blue-400/30 bg-blue-500/5',
                   'min-h-[120px]'
                 )}
               >
-                    {/* Action Cards */}
-                    {groupedCards.action.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mr-4">
-                        <div className="w-full text-xs text-gray-400 mb-1">Action Cards</div>
-                        {groupedCards.action.map((card, index) => 
-                          renderCard(card, index)
+
+                    {/* Queens and Hand Cards Layout */}
+                    {(queens.length > 0 || groupedCards.action.length > 0 || groupedCards.number.length > 0) && (
+                      <div className="w-full flex items-center gap-8" style={{ minHeight: '140px' }}>
+                        {/* Awakened Queens - Left Side */}
+                        {queens.length > 0 && (
+                          <div className="flex flex-wrap gap-2 flex-shrink-0">
+                            {queens.map((queen, index) => {
+                              const isQueenSelected = selectedQueen?.id === queen.id;
+                              const isSelectable = canSelectQueen && !isCurrentPlayer;
+                              
+                              return (
+                                <motion.div
+                                  key={queen.id}
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="relative"
+                                >
+                                  <CardComponent
+                                    card={queen}
+                                    size="md"
+                                    faceDown={false}
+                                    glowing={isQueenSelected}
+                                    interactive={isSelectable}
+                                    selected={isQueenSelected}
+                                    onClick={isSelectable ? () => onQueenSelect?.(queen) : undefined}
+                                    className={clsx(
+                                      isSelectable && 'cursor-pointer hover:scale-105 transition-transform',
+                                      !isSelectable && 'cursor-default'
+                                    )}
+                                  />
+                                  {isSelectable && (
+                                    <div className="absolute inset-0 border-2 border-dashed border-red-400/50 rounded-lg pointer-events-none" />
+                                  )}
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Hand Cards - Right Side */}
+                        {(groupedCards.action.length > 0 || groupedCards.number.length > 0) && (
+                          <div className="flex flex-wrap gap-2">
+                            {/* Action Cards */}
+                            {groupedCards.action.map((card, index) => 
+                              renderCard(card, index)
+                            )}
+                            {/* Number Cards */}
+                            {groupedCards.number.map((card, index) => 
+                              renderCard(card, groupedCards.action.length + index)
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
 
-                    {/* Number Cards */}
-                    {groupedCards.number.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        <div className="w-full text-xs text-gray-400 mb-1">Number Cards</div>
-                        {groupedCards.number.map((card, index) => 
-                          renderCard(card, groupedCards.action.length + index)
-                        )}
-                      </div>
-                    )}
-
-                    {hand.length === 0 && (
+                    {hand.length === 0 && queens.length === 0 && (
                       <div className="flex items-center justify-center w-full h-20 text-gray-500">
                         <span className="text-sm">No cards in hand</span>
                       </div>

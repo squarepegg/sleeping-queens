@@ -40,13 +40,13 @@ export default async function handler(
     if (existingUser) {
       // Update existing session with new token
       const newSessionToken = generateSessionToken();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('user_sessions')
         .update({ 
           session_token: newSessionToken,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', existingUser.id)
+        .eq('id', (existingUser as any).id)
         .select()
         .single();
 
@@ -59,7 +59,7 @@ export default async function handler(
     } else {
       // Create new session
       const sessionToken = generateSessionToken();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('user_sessions')
         .insert({
           username: cleanUsername,

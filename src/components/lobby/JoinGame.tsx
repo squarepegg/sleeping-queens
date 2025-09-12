@@ -27,9 +27,6 @@ function JoinGameContent() {
             if (result.success && result.gameId) {
                 console.log('[JoinGame] Successfully joined game:', result.gameId);
 
-                if (result.alreadyJoined) {
-                    console.log('[JoinGame] Already in game, rejoining...');
-                }
 
                 // Navigate to the game
                 router.push(`/game/${result.gameId}`);

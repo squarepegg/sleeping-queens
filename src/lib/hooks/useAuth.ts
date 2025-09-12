@@ -58,9 +58,9 @@ export function useAuth() {
       // Valid session
       setAuthState({
         user: {
-          id: data.id,
-          username: data.username,
-          sessionToken: data.session_token,
+          id: (data as any).id,
+          username: (data as any).username,
+          sessionToken: (data as any).session_token,
         },
         loading: false,
         error: null,
@@ -93,13 +93,13 @@ export function useAuth() {
       if (existingUser) {
         // Update existing session
         const newSessionToken = generateSessionToken();
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('user_sessions')
           .update({ 
             session_token: newSessionToken,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existingUser.id)
+          .eq('id', (existingUser as any).id)
           .select()
           .single();
 
@@ -108,7 +108,7 @@ export function useAuth() {
       } else {
         // Create new session
         const sessionToken = generateSessionToken();
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('user_sessions')
           .insert({
             username,
@@ -151,7 +151,7 @@ export function useAuth() {
 
     try {
       // Deactivate session in database
-      await supabase
+      await (supabase as any)
         .from('user_sessions')
         .update({ is_active: false })
         .eq('id', authState.user.id);

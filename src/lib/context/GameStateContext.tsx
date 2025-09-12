@@ -89,6 +89,7 @@ interface GameStateContextType {
     getPendingKnightAttack: () => any;
     blockKnightAttack: (playerId: string) => Promise<MoveValidationResult>;
     allowKnightAttack: () => Promise<MoveValidationResult>;
+    getRemainingDefenseTime: () => number;
 }
 
 const GameStateContext = createContext<GameStateContextType | null>(null);
@@ -211,19 +212,18 @@ export function GameStateProvider({
                     throw new Error('Game not found');
                 }
 
-                if (!data.state) {
+                if (!(data as any).state) {
                     console.error('[GameContext] Game has no state property');
                     throw new Error('Invalid game state');
                 }
 
                 console.log('[GameContext] Game state details:', {
-                    players: data.state.players?.length,
-                    phase: data.state.phase,
-                    version: data.version
+                    players: (data as any).state.players?.length,
+                    phase: (data as any).state.phase
                 });
 
                 // Update state with loaded game
-                handleGameStateUpdate(data.state as GameState, 'database');
+                handleGameStateUpdate((data as any).state as GameState, 'database');
                 console.log('[GameContext] Initial state loaded successfully');
 
             } catch (error: any) {
@@ -262,10 +262,9 @@ export function GameStateProvider({
                             hasOld: !!payload.old
                         });
 
-                        if (payload.new && payload.new.state) {
-                            const newState = payload.new.state as GameState;
+                        if (payload.new && (payload.new as any).state) {
+                            const newState = (payload.new as any).state as GameState;
                             console.log('[GameContext] New state from DB:', {
-                                version: payload.new.version,
                                 players: newState.players?.length,
                                 phase: newState.phase
                             });
@@ -348,10 +347,9 @@ export function GameStateProvider({
         }
 
         const optimisticState = optimisticEngine.getState();
-        optimisticState.version = (state.gameState.version || 0) + 1;
 
         // Apply optimistically
-        dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState, source: 'local' });
+        dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState, source: 'broadcast' });
 
         // Broadcast for immediate feedback to other players
         await broadcastGameUpdate(optimisticState);
@@ -391,7 +389,7 @@ export function GameStateProvider({
                 .single();
 
             if (data) {
-                handleGameStateUpdate(data.state, 'database');
+                handleGameStateUpdate((data as any).state, 'database');
             }
 
             return { isValid: false, error: error.message };
@@ -428,7 +426,6 @@ export function GameStateProvider({
 
             // Get the updated state with dealt cards
             const newGameState = gameEngineRef.current.getState();
-            newGameState.version = (state.gameState.version || 0) + 1;
 
             console.log('[StartGame] Game started, players have cards:', {
                 phase: newGameState.phase,
@@ -439,14 +436,13 @@ export function GameStateProvider({
             });
 
             // Update local state immediately
-            handleGameStateUpdate(newGameState, 'local');
+            handleGameStateUpdate(newGameState, 'database');
 
             // Save complete state to database (with dealt cards!)
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('games')
                 .update({
-                    state: newGameState,
-                    version: newGameState.version
+                    state: newGameState
                 })
                 .eq('id', gameId);
 
@@ -490,18 +486,17 @@ export function GameStateProvider({
                 return { success: false };
             }
 
-            console.log('[JoinGame] Found game:', gameData.id);
-            console.log('[JoinGame] Current players:', gameData.state.players?.length);
-            console.log('[JoinGame] Current version:', gameData.version);
+            console.log('[JoinGame] Found game:', (gameData as any).id);
+            console.log('[JoinGame] Current players:', (gameData as any).state.players?.length);
 
-            const gameState = gameData.state as GameState;
+            const gameState = (gameData as any).state as GameState;
 
             // Check if already joined
             const existingPlayer = gameState.players.find(p => p.id === user.id);
             if (existingPlayer) {
                 console.log('[JoinGame] Already in game');
                 dispatch({ type: 'SET_LOADING', loading: false });
-                return { success: true, gameId: gameData.id };
+                return { success: true, gameId: (gameData as any).id };
             }
 
             // Check if full
@@ -530,21 +525,18 @@ export function GameStateProvider({
 
             const updatedState = {
                 ...gameState,
-                players: [...gameState.players, newPlayer],
-                version: (gameData.version || 0) + 1
+                players: [...gameState.players, newPlayer]
             };
 
             console.log('[JoinGame] New player count:', updatedState.players.length);
-            console.log('[JoinGame] New version:', updatedState.version);
 
             // Update the database - THIS SHOULD TRIGGER REALTIME
-            const { data: updateData, error: updateError } = await supabase
+            const { data: updateData, error: updateError } = await (supabase as any)
                 .from('games')
                 .update({
-                    state: updatedState,
-                    version: updatedState.version
+                    state: updatedState
                 })
-                .eq('id', gameData.id)
+                .eq('id', (gameData as any).id)
                 .select()
                 .single();
 
@@ -553,11 +545,11 @@ export function GameStateProvider({
                 throw new Error('Failed to join game');
             }
 
-            console.log('[JoinGame] Update successful, new version:', updateData.version);
+            console.log('[JoinGame] Update successful');
 
             // Also add to players table
-            await supabase.from('players').insert({
-                game_id: gameData.id,
+            await (supabase as any).from('players').insert({
+                game_id: (gameData as any).id,
                 user_id: user.id,
                 name: user.username,
                 position: newPlayer.position,
@@ -565,7 +557,7 @@ export function GameStateProvider({
             }).select();
 
             // Send a broadcast notification for immediate update
-            const notifyChannel = supabase.channel(`game-notify-${gameData.id}`);
+            const notifyChannel = supabase.channel(`game-notify-${(gameData as any).id}`);
             await notifyChannel.send({
                 type: 'broadcast',
                 event: 'player_joined',
@@ -579,7 +571,7 @@ export function GameStateProvider({
 
             dispatch({ type: 'SET_LOADING', loading: false });
 
-            return { success: true, gameId: gameData.id };
+            return { success: true, gameId: (gameData as any).id };
 
         } catch (error: any) {
             console.error('[JoinGame] Error:', error);
@@ -603,24 +595,23 @@ export function GameStateProvider({
             gameEngine.addPlayer({
                 id: user.id,
                 name: user.username,
+                position: 0,
                 isConnected: true,
             });
 
             const initialState = gameEngine.getState();
-            initialState.version = 1; // Start with version 1
 
             console.log('[GameContext] Created game with phase:', initialState.phase);
             console.log('[GameContext] Created game with players:', initialState.players.length);
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('games')
                 .insert({
                     id: initialState.id,
                     room_code: initialState.roomCode,
                     state: initialState,
                     max_players: maxPlayers,
-                    is_active: true,
-                    version: 1
+                    is_active: true
                 })
                 .select()
                 .single();
@@ -630,7 +621,7 @@ export function GameStateProvider({
             }
 
             // Add player record
-            await supabase.from('players').insert({
+            await (supabase as any).from('players').insert({
                 game_id: initialState.id,
                 user_id: user.id,
                 name: user.username,
@@ -726,13 +717,22 @@ export function GameStateProvider({
         return result;
     }, [state.gameState]);
 
+    const getRemainingDefenseTime = useCallback((): number => {
+        if (!gameEngineRef.current) {
+            return 0;
+        }
+        return gameEngineRef.current.getRemainingDefenseTime();
+    }, []);
+
     // ============================================
     // Computed properties
     // ============================================
 
     const isHost = !!(user && state.gameState?.players[0]?.id === user.id);
-    const currentPlayer = state.gameState?.players.find(p => p.id === user?.id) || null;
-    const isMyTurn = state.gameState?.currentPlayerIndex === currentPlayer?.position;
+    // Use server-authoritative current player ID
+    const currentPlayer = state.gameState?.players.find(p => p.id === state.gameState?.currentPlayerId) || null;
+    const userPlayer = state.gameState?.players.find(p => p.id === user?.id) || null;
+    const isMyTurn = state.gameState?.currentPlayerId === user?.id;
     const canPlayMove = isMyTurn && state.gameState?.phase === 'playing';
 
     const value: GameStateContextType = {
@@ -751,6 +751,7 @@ export function GameStateProvider({
         getPendingKnightAttack,
         blockKnightAttack,
         allowKnightAttack,
+        getRemainingDefenseTime,
     };
 
     return (

@@ -42,7 +42,6 @@ describe('CardComponent', () => {
       );
 
       expect(screen.getByText('Test Queen')).toBeInTheDocument();
-      expect(screen.getByText('15pts')).toBeInTheDocument();
     });
 
     test('should handle queen card click', () => {

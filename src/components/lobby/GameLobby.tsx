@@ -114,11 +114,6 @@ export function GameLobby() {
                                 <Copy className={`h-4 w-4 ${copied ? 'text-green-400' : 'text-gray-400'}`} />
                             </Button>
                         </div>
-                        {gameState.version && (
-                            <div className="text-xs text-gray-500">
-                                v{gameState.version}
-                            </div>
-                        )}
                     </div>
                     {copied && (
                         <p className="text-green-400 text-sm mt-2">Room code copied!</p>

@@ -159,7 +159,8 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
       return '';
     }
 
-    return card.description || '';
+    // Don't show descriptions for action cards
+    return '';
   };
 
   const motionProps = {
@@ -250,14 +251,6 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
               </>
             )}
 
-            {/* Points indicator for queens */}
-            {card.type === 'queen' && size !== 'sm' && (
-              <div className="absolute bottom-1 left-1 right-1 text-center">
-                <div className="inline-block bg-white/50 rounded-full px-1 py-0.5 text-[0.5rem] font-bold">
-                  {(card as Queen).points}pts
-                </div>
-              </div>
-            )}
 
             {/* Special effects overlay */}
             {(selected || isHovered) && (

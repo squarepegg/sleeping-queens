@@ -37,18 +37,14 @@ import {
 
 export class SleepingQueensGame {
   private gameState: GameState;
-  private pendingKnightAttack: {
-    attacker: string;
-    target: string;
-    targetQueen: Queen;
-    timestamp: number;
-  } | null = null;
+  private static readonly DEFENSE_WINDOW_MS = 5000; // 5 seconds to decide
 
   constructor(initialState?: Partial<GameState>) {
     this.gameState = {
       id: initialState?.id || generateGameId(),
       players: initialState?.players || [],
       currentPlayerIndex: initialState?.currentPlayerIndex || 0,
+      currentPlayerId: initialState?.currentPlayerId || null,
       sleepingQueens: initialState?.sleepingQueens || createSleepingQueens(),
       deck: initialState?.deck || shuffleDeck(createDeck()),
       discardPile: initialState?.discardPile || [],
@@ -138,6 +134,8 @@ export class SleepingQueensGame {
       }
     }
 
+    // Set first player as current player by ID
+    this.gameState.currentPlayerId = this.gameState.players[0]?.id || null;
     this.gameState.phase = 'playing';
     this.gameState.updatedAt = Date.now();
     
@@ -167,12 +165,14 @@ export class SleepingQueensGame {
         return this.executeJesterMove(move);
       case 'discard':
         return this.executeDiscardMove(move);
+      case 'stage_card':
+        return this.executeStagingMove(move);
       default:
         return { isValid: false, error: 'Unknown move type' };
     }
   }
 
-  private validateMove(move: GameMove): MoveValidationResult {
+  public validateMove(move: GameMove): MoveValidationResult {
     if (this.gameState.phase !== 'playing') {
       return { isValid: false, error: 'Game is not in playing phase' };
     }
@@ -182,8 +182,15 @@ export class SleepingQueensGame {
       return { isValid: false, error: 'Player not found' };
     }
 
-    // Check if it's the player's turn
-    if (this.gameState.players[this.gameState.currentPlayerIndex]?.id !== move.playerId) {
+    // Check if it's the player's turn using direct ID comparison
+    console.log('Server turn validation:', {
+      currentPlayerId: this.gameState.currentPlayerId,
+      movePlayerId: move.playerId,
+      movePlayerName: player.name,
+      isPlayerTurn: this.gameState.currentPlayerId === move.playerId
+    });
+
+    if (this.gameState.currentPlayerId !== move.playerId) {
       return { isValid: false, error: 'Not your turn' };
     }
 
@@ -238,7 +245,7 @@ export class SleepingQueensGame {
       
       case 'play_dragon':
         // Can only play dragon to block knight attack
-        if (!this.pendingKnightAttack || this.pendingKnightAttack.target !== move.playerId) {
+        if (!this.gameState.pendingKnightAttack || this.gameState.pendingKnightAttack.target !== move.playerId) {
           return { isValid: false, error: 'No knight attack to block' };
         }
         const hasDragon = player.hand.some(card => card.type === 'dragon');
@@ -259,23 +266,27 @@ export class SleepingQueensGame {
         if (!hasWand) {
           return { isValid: false, error: 'No wand in hand' };
         }
-        const targetHasQueen = wandTargetPlayer.queens.some(q => q.id === move.targetCard!.id);
-        if (!targetHasQueen) {
+        const wandTargetHasQueen = wandTargetPlayer.queens.some(q => q.id === move.targetCard!.id);
+        if (!wandTargetHasQueen) {
           return { isValid: false, error: 'Target player does not have this queen' };
         }
         return { isValid: true };
       
       case 'play_potion':
-        if (!move.targetCard || move.targetCard.type !== 'queen') {
-          return { isValid: false, error: 'Invalid target queen for potion move' };
+        if (!move.targetPlayer || !move.targetCard || move.targetCard.type !== 'queen') {
+          return { isValid: false, error: 'Invalid target for potion move' };
+        }
+        const potionTargetPlayer = this.gameState.players.find(p => p.id === move.targetPlayer);
+        if (!potionTargetPlayer) {
+          return { isValid: false, error: 'Target player not found' };
         }
         const hasPotion = player.hand.some(card => card.type === 'potion');
         if (!hasPotion) {
           return { isValid: false, error: 'No potion in hand' };
         }
-        const playerHasQueen = player.queens.some(q => q.id === move.targetCard!.id);
-        if (!playerHasQueen) {
-          return { isValid: false, error: 'You do not have this queen' };
+        const potionTargetHasQueen = potionTargetPlayer.queens.some(q => q.id === move.targetCard!.id);
+        if (!potionTargetHasQueen) {
+          return { isValid: false, error: 'Target player does not have this queen' };
         }
         return { isValid: true };
       
@@ -349,6 +360,60 @@ export class SleepingQueensGame {
           return { isValid: false, error: 'Invalid discard: use 1 card, 2 identical numbers, or 3+ for equation' };
         }
       
+      case 'stage_card':
+        if (!move.cards || move.cards.length === 0) {
+          return { isValid: false, error: 'Must stage at least one card' };
+        }
+        
+        // Validate that player has all cards
+        for (const card of move.cards) {
+          const hasCard = player.hand.some(handCard => handCard.id === card.id);
+          if (!hasCard) {
+            return { isValid: false, error: `Card ${card.name || card.type} not found in hand` };
+          }
+        }
+        
+        // Use the same validation as discard (since staging is for discards or actions)
+        if (move.cards.length === 1) {
+          // Single card: action card for play or any card for discard
+          return { isValid: true };
+        } else if (move.cards.length === 2) {
+          // Pair: must be identical number cards
+          const numberCards = move.cards.filter(c => c.type === 'number') as NumberCard[];
+          if (numberCards.length !== 2) {
+            return { isValid: false, error: 'Can only stage pairs of number cards' };
+          }
+          if (numberCards[0].value !== numberCards[1].value) {
+            return { isValid: false, error: 'Staged pair must be identical number cards' };
+          }
+          return { isValid: true };
+        } else if (move.cards.length >= 3) {
+          // Equation: must be all number cards forming valid equation
+          const numberCards = move.cards.filter(c => c.type === 'number') as NumberCard[];
+          if (numberCards.length !== move.cards.length) {
+            return { isValid: false, error: 'Math equations must use only number cards' };
+          }
+          
+          // Validate equation (reuse discard validation logic)
+          const numbers = numberCards.map(c => c.value || 0).sort((a, b) => a - b);
+          if (numbers.length < 3) {
+            return { isValid: false, error: 'Math equations require at least 3 cards' };
+          }
+          
+          // Check if it forms a valid addition equation (a + b = c where c is largest)
+          const largest = numbers[numbers.length - 1];
+          const remaining = numbers.slice(0, -1);
+          const sum = remaining.reduce((acc, num) => acc + num, 0);
+          
+          if (sum !== largest) {
+            return { isValid: false, error: `Numbers ${numbers.join(', ')} do not form a valid addition equation` };
+          }
+          
+          return { isValid: true };
+        } else {
+          return { isValid: false, error: 'Invalid number of cards for staging' };
+        }
+      
       default:
         return { isValid: false, error: 'Unknown move type' };
     }
@@ -384,6 +449,9 @@ export class SleepingQueensGame {
     this.advanceTurn();
     this.checkGameEnd();
 
+    // Clear staged card after successful move
+    this.gameState.stagedCard = undefined;
+
     return { isValid: true };
   }
 
@@ -404,12 +472,14 @@ export class SleepingQueensGame {
     // Check if target has a dragon to potentially block
     const targetHasDragon = targetPlayer.hand.some(card => card.type === 'dragon');
     
-    // Create pending attack (either to be blocked or completed immediately)
-    this.pendingKnightAttack = {
+    // Create pending attack with defense deadline
+    const now = Date.now();
+    this.gameState.pendingKnightAttack = {
       attacker: move.playerId,
       target: targetPlayer.id,
       targetQueen: move.targetCard as Queen,
-      timestamp: Date.now()
+      timestamp: now,
+      defenseDeadline: now + SleepingQueensGame.DEFENSE_WINDOW_MS
     };
     
     if (targetHasDragon) {
@@ -422,22 +492,22 @@ export class SleepingQueensGame {
   }
 
   private completeKnightAttack(): MoveValidationResult {
-    if (!this.pendingKnightAttack) {
+    if (!this.gameState.pendingKnightAttack) {
       return { isValid: false, error: 'No pending knight attack' };
     }
 
-    const attacker = this.gameState.players.find(p => p.id === this.pendingKnightAttack.attacker);
-    const target = this.gameState.players.find(p => p.id === this.pendingKnightAttack.target);
+    const attacker = this.gameState.players.find(p => p.id === this.gameState.pendingKnightAttack!.attacker);
+    const target = this.gameState.players.find(p => p.id === this.gameState.pendingKnightAttack!.target);
     
     if (!attacker || !target) {
-      this.pendingKnightAttack = null;
+      this.gameState.pendingKnightAttack = undefined;
       return { isValid: false, error: 'Player not found' };
     }
 
     // Remove knight from attacker's hand
     const knightIndex = attacker.hand.findIndex(card => card.type === 'knight');
     if (knightIndex === -1) {
-      this.pendingKnightAttack = null;
+      this.gameState.pendingKnightAttack = undefined;
       return { isValid: false, error: 'No knight in hand' };
     }
 
@@ -445,9 +515,9 @@ export class SleepingQueensGame {
     this.gameState.discardPile.push(knight);
 
     // Steal the queen
-    const queenIndex = target.queens.findIndex(q => q.id === this.pendingKnightAttack!.targetQueen.id);
+    const queenIndex = target.queens.findIndex(q => q.id === this.gameState.pendingKnightAttack!.targetQueen.id);
     if (queenIndex === -1) {
-      this.pendingKnightAttack = null;
+      this.gameState.pendingKnightAttack = undefined;
       return { isValid: false, error: 'Target queen not found' };
     }
 
@@ -462,7 +532,9 @@ export class SleepingQueensGame {
     this.advanceTurn();
     this.checkGameEnd();
 
-    this.pendingKnightAttack = null;
+    // Clear staged card after successful move
+    this.gameState.stagedCard = undefined;
+    this.gameState.pendingKnightAttack = undefined;
     return { isValid: true };
   }
 
@@ -473,8 +545,16 @@ export class SleepingQueensGame {
     }
 
     // Can only play dragon to block knight attack
-    if (!this.pendingKnightAttack || this.pendingKnightAttack.target !== move.playerId) {
+    if (!this.gameState.pendingKnightAttack || this.gameState.pendingKnightAttack.target !== move.playerId) {
       return { isValid: false, error: 'No knight attack to block' };
+    }
+
+    // Check if defense window has expired
+    const now = Date.now();
+    if (now >= this.gameState.pendingKnightAttack.defenseDeadline) {
+      // Defense window expired - auto-complete the attack
+      this.completeKnightAttack();
+      return { isValid: false, error: 'Defense window has expired' };
     }
 
     // Remove dragon from hand
@@ -487,7 +567,7 @@ export class SleepingQueensGame {
     this.gameState.discardPile.push(dragon);
 
     // Block the attack
-    this.pendingKnightAttack = null;
+    this.gameState.pendingKnightAttack = undefined;
     
     this.refillHand(player);
     
@@ -528,12 +608,17 @@ export class SleepingQueensGame {
     this.advanceTurn();
     this.checkGameEnd();
 
+    // Clear staged card after successful move
+    this.gameState.stagedCard = undefined;
+
     return { isValid: true };
   }
 
   private executePotionMove(move: GameMove): MoveValidationResult {
     const player = this.gameState.players.find(p => p.id === move.playerId);
-    if (!player || !move.targetCard) {
+    const targetPlayer = move.targetPlayer ? this.gameState.players.find(p => p.id === move.targetPlayer) : null;
+    
+    if (!player || !targetPlayer || !move.targetCard) {
       return { isValid: false, error: 'Invalid potion move' };
     }
 
@@ -546,21 +631,24 @@ export class SleepingQueensGame {
     const potion = player.hand.splice(potionIndex, 1)[0];
     this.gameState.discardPile.push(potion);
 
-    // Put own queen back to sleep
-    const queenIndex = player.queens.findIndex(q => q.id === move.targetCard!.id);
+    // Put target player's queen back to sleep
+    const queenIndex = targetPlayer.queens.findIndex(q => q.id === move.targetCard!.id);
     if (queenIndex === -1) {
       return { isValid: false, error: 'Target queen not found' };
     }
 
-    const queen = player.queens.splice(queenIndex, 1)[0];
+    const queen = targetPlayer.queens.splice(queenIndex, 1)[0];
     queen.isAwake = false;
     this.gameState.sleepingQueens.push(queen);
     
-    player.score = calculatePlayerScore(player);
+    targetPlayer.score = calculatePlayerScore(targetPlayer);
 
     this.refillHand(player);
     this.advanceTurn();
     this.checkGameEnd();
+
+    // Clear staged card after successful move
+    this.gameState.stagedCard = undefined;
 
     return { isValid: true };
   }
@@ -620,27 +708,32 @@ export class SleepingQueensGame {
       return { isValid: false, error: 'No cards left in deck' };
     }
 
+    // Store the jester reveal info so ALL players can see the revealed card
+    this.gameState.jesterReveal = {
+      revealedCard,
+      targetPlayerId: '', // Will be set based on card type
+      waitingForQueenSelection: false
+    };
+
     // Check what type of card was revealed
     if (revealedCard.type === 'number') {
-      // Number card: Count around the table
+      // Number card: Count around the table using round robin
       const numberValue = (revealedCard as NumberCard).value || 1;
       const currentPlayerIndex = this.gameState.players.findIndex(p => p.id === move.playerId);
       
-      // Count starting from current player (count includes the current player)
+      // Round robin: current player is "1", player to left is "2", etc.
       const targetPlayerIndex = (currentPlayerIndex + numberValue - 1) % this.gameState.players.length;
       const targetPlayer = this.gameState.players[targetPlayerIndex];
+      
+      // Update jester reveal with the target player
+      this.gameState.jesterReveal.targetPlayerId = targetPlayer.id;
       
       // Discard the revealed number card
       this.gameState.discardPile.push(revealedCard);
       
       // The target player gets to wake up a queen (if there are any sleeping)
       if (this.gameState.sleepingQueens.length > 0) {
-        // Store the jester reveal info for the target player to select a queen
-        this.gameState.jesterReveal = {
-          revealedCard,
-          targetPlayerId: targetPlayer.id,
-          waitingForQueenSelection: true
-        };
+        this.gameState.jesterReveal.waitingForQueenSelection = true;
         
         // Don't advance turn yet - waiting for queen selection
         this.refillHand(player);
@@ -648,17 +741,29 @@ export class SleepingQueensGame {
           isValid: true, 
           message: `Jester revealed ${numberValue}! ${targetPlayer.name} gets to wake a queen.`
         };
+      } else {
+        // No sleeping queens, just complete the move
+        delete this.gameState.jesterReveal;
+        this.refillHand(player);
+        this.advanceTurn();
+        return { 
+          isValid: true, 
+          message: `Jester revealed ${numberValue}! But there are no sleeping queens to wake.`
+        };
       }
       
     } else {
-      // Picture/Action card: Player keeps it and gets another turn
+      // Action card: Player keeps it and gets another turn
       player.hand.push(revealedCard);
+      
+      // Clear the jester reveal since the card goes to the player's hand
+      delete this.gameState.jesterReveal;
       
       // Don't advance turn - player gets to go again
       this.refillHand(player);
       return { 
         isValid: true,
-        message: `Jester revealed a ${revealedCard.type}! You keep it and play again.`
+        message: `Jester revealed a ${revealedCard.name || revealedCard.type}! You keep it and play again.`
       };
     }
 
@@ -729,6 +834,12 @@ export class SleepingQueensGame {
       }
     }
 
+    // Clear staged card after discard completes
+    if (this.gameState.stagedCard) {
+      this.gameState.stagedCard = undefined;
+      this.gameState.updatedAt = Date.now();
+    }
+
     this.advanceTurn();
     return { isValid: true };
   }
@@ -777,7 +888,10 @@ export class SleepingQueensGame {
   }
 
   private advanceTurn(): void {
-    this.gameState.currentPlayerIndex = getNextPlayerIndex(this.gameState);
+    const currentPlayerIndex = this.gameState.players.findIndex(p => p.id === this.gameState.currentPlayerId);
+    const nextPlayerIndex = (currentPlayerIndex + 1) % this.gameState.players.length;
+    this.gameState.currentPlayerIndex = nextPlayerIndex; // Keep for backward compatibility
+    this.gameState.currentPlayerId = this.gameState.players[nextPlayerIndex]?.id || null;
     this.gameState.updatedAt = Date.now();
   }
 
@@ -794,16 +908,38 @@ export class SleepingQueensGame {
   }
 
   getCurrentTurnPlayer(): Player | null {
-    if (this.gameState.players.length === 0) return null;
-    return this.gameState.players[this.gameState.currentPlayerIndex] || null;
+    if (!this.gameState.currentPlayerId) return null;
+    return this.gameState.players.find(p => p.id === this.gameState.currentPlayerId) || null;
   }
 
   canPlayerPlayDragon(playerId: string): boolean {
-    return this.pendingKnightAttack?.target === playerId;
+    return this.gameState.pendingKnightAttack?.target === playerId;
   }
 
   getPendingKnightAttack() {
-    return this.pendingKnightAttack;
+    return this.gameState.pendingKnightAttack;
+  }
+
+  // Check if defense window has expired and auto-complete attack if so
+  checkDefenseWindowExpiration(): boolean {
+    const attack = this.gameState.pendingKnightAttack;
+    if (!attack) return false;
+    
+    const now = Date.now();
+    if (now >= attack.defenseDeadline) {
+      // Defense window expired - complete the attack
+      this.completeKnightAttack();
+      return true;
+    }
+    return false;
+  }
+
+  getRemainingDefenseTime(): number {
+    const attack = this.gameState.pendingKnightAttack;
+    if (!attack) return 0;
+    
+    const remaining = attack.defenseDeadline - Date.now();
+    return Math.max(0, remaining);
   }
 
   blockKnightAttack(playerId: string): MoveValidationResult {
@@ -815,7 +951,62 @@ export class SleepingQueensGame {
     });
   }
 
+  private executeStagingMove(move: GameMove): MoveValidationResult {
+    const player = this.gameState.players.find(p => p.id === move.playerId);
+    if (!player) {
+      return { isValid: false, error: 'Player not found' };
+    }
+
+    // Determine action description
+    let action: string;
+    let message: string;
+    
+    if (move.cards.length === 1) {
+      const card = move.cards[0];
+      const isActionCard = ['king', 'knight', 'potion', 'wand', 'jester'].includes(card.type);
+      if (isActionCard) {
+        action = `use a ${card.name || card.type}`;
+        message = `${card.name || card.type} staged and ready to play`;
+      } else {
+        action = `discard ${card.name || card.type}`;
+        message = `${card.name || card.type} staged for discard`;
+      }
+    } else if (move.cards.length === 2) {
+      const card = move.cards[0];
+      action = `discard a pair of ${card.value}s`;
+      message = `Pair of ${card.value}s staged for discard`;
+    } else {
+      // 3+ cards = equation
+      const numberCards = move.cards.filter(c => c.type === 'number') as NumberCard[];
+      const numbers = numberCards.map(c => c.value || 0).sort((a, b) => a - b);
+      const equation = `${numbers.slice(0, -1).join(' + ')} = ${numbers[numbers.length - 1]}`;
+      action = `discard equation ${equation}`;
+      message = `Equation ${equation} staged for discard`;
+    }
+    
+    // Set the staged cards in the game state
+    this.gameState.stagedCard = {
+      cards: move.cards,
+      playerId: move.playerId,
+      action
+    };
+
+    this.gameState.updatedAt = Date.now();
+    
+    return {
+      isValid: true,
+      message
+    };
+  }
+
   allowKnightAttack(): MoveValidationResult {
+    // Check if defense window has expired before allowing
+    if (this.gameState.pendingKnightAttack) {
+      const now = Date.now();
+      if (now >= this.gameState.pendingKnightAttack.defenseDeadline) {
+        return { isValid: false, error: 'Defense window has already expired' };
+      }
+    }
     return this.completeKnightAttack();
   }
 

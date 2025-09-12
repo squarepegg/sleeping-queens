@@ -51,14 +51,14 @@ export default async function handler(
     }
 
     res.status(200).json({
-      gameState: gameData.state,
+      gameState: (gameData as any).state,
       players: playersData || [],
       recentMoves: movesData || [],
       metadata: {
-        createdAt: gameData.created_at,
-        updatedAt: gameData.updated_at,
-        isActive: gameData.is_active,
-        roomCode: gameData.room_code,
+        createdAt: (gameData as any).created_at,
+        updatedAt: (gameData as any).updated_at,
+        isActive: (gameData as any).is_active,
+        roomCode: (gameData as any).room_code,
       },
     });
   } catch (error) {

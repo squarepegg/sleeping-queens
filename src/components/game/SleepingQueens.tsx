@@ -15,10 +15,13 @@ export interface SleepingQueensProps {
   selectedQueen: Queen | null;
   onQueenSelect: (queen: Queen | null) => void;
   canSelectQueen: boolean;
+  actionType?: 'king' | 'knight' | 'potion' | 'wand';
   highlightQueens?: Queen[];
   discardPile?: any[];
   drawPile?: any[];
+  isDraggingCard?: boolean;
   className?: string;
+  initialQueensLayout?: (Queen | null)[];
 }
 
 export function SleepingQueens({
@@ -26,10 +29,13 @@ export function SleepingQueens({
   selectedQueen,
   onQueenSelect,
   canSelectQueen,
+  actionType,
   highlightQueens = [],
   discardPile = [],
   drawPile = [],
+  isDraggingCard = false,
   className,
+  initialQueensLayout,
 }: SleepingQueensProps) {
   const [hoveredQueen, setHoveredQueen] = useState<Queen | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -38,17 +44,37 @@ export function SleepingQueens({
     setIsMounted(true);
   }, []);
 
-  // Split queens into blocks of 12 (6 on left, 6 on right)
+  // Create fixed layout grid that maintains positions (including empty spaces)
   const queenBlocks = useMemo(() => {
-    const blocks: { left: Queen[], right: Queen[] }[] = [];
-    for (let i = 0; i < sleepingQueens.length; i += 12) {
-      const block = sleepingQueens.slice(i, i + 12);
+    // Use the layout with fixed positions if provided, otherwise create from current queens
+    let layoutToUse: (Queen | null)[];
+    
+    if (initialQueensLayout) {
+      // Update the initial layout to reflect current sleeping queens
+      layoutToUse = initialQueensLayout.map(initialQueen => {
+        if (!initialQueen) return null;
+        // Check if this queen is still sleeping
+        return sleepingQueens.find(q => q.id === initialQueen.id) || null;
+      });
+    } else {
+      // Fallback: create layout from current queens (for backward compatibility)
+      layoutToUse = [...sleepingQueens];
+    }
+    
+    const blocks: { left: (Queen | null)[], right: (Queen | null)[] }[] = [];
+    for (let i = 0; i < layoutToUse.length; i += 12) {
+      const block = layoutToUse.slice(i, i + 12);
       const left = block.slice(0, 6);
       const right = block.slice(6, 12);
+      
+      // Ensure we have full 6-slot arrays (pad with nulls if needed)
+      while (left.length < 6) left.push(null);
+      while (right.length < 6) right.push(null);
+      
       blocks.push({ left, right });
     }
     return blocks;
-  }, [sleepingQueens]);
+  }, [sleepingQueens, initialQueensLayout]);
 
 
   const handleQueenClick = useCallback((queen: Queen) => {
@@ -62,6 +88,47 @@ export function SleepingQueens({
     setHoveredQueen(queen);
   }, []);
 
+  const getSelectionText = useCallback(() => {
+    if (selectedQueen) {
+      switch (actionType) {
+        case 'king':
+          return 'Queen selected! Play your King to wake her up.';
+        case 'knight':
+          return 'Queen selected! Knight will steal this queen.';
+        case 'potion':
+          return 'Queen selected! Potion will put this queen to sleep.';
+        case 'wand':
+          return 'Queen selected! Magic Wand will put this queen to sleep.';
+        default:
+          return 'Queen selected! Play your card to continue.';
+      }
+    }
+
+    switch (actionType) {
+      case 'king':
+        return 'Select any sleeping queen - you won\'t know which one until awakened!';
+      case 'knight':
+      case 'potion':
+      case 'wand':
+        return null; // No text needed - other messages are sufficient
+      default:
+        return 'Select a queen to continue';
+    }
+  }, [selectedQueen, actionType]);
+
+  const getHelpText = useCallback(() => {
+    switch (actionType) {
+      case 'king':
+        return 'Choose wisely - all queens are hidden until awakened!';
+      case 'knight':
+      case 'potion':
+      case 'wand':
+        return null; // No help text needed - the staged card message is sufficient
+      default:
+        return 'Choose your target carefully!';
+    }
+  }, [actionType]);
+
   const isQueenHighlighted = useCallback((queen: Queen) => {
     return highlightQueens.some(q => q.id === queen.id);
   }, [highlightQueens]);
@@ -70,7 +137,16 @@ export function SleepingQueens({
     return selectedQueen?.id === queen.id;
   }, [selectedQueen]);
 
-  const renderQueenCard = useCallback((queen: Queen, index: number) => {
+  const renderQueenSlot = useCallback((queen: Queen | null, index: number) => {
+    // Handle empty slot
+    if (!queen) {
+      return (
+        <div key={`empty-${index}`} className="w-20 h-28 opacity-50">
+          {/* Empty space placeholder - maintains layout */}
+        </div>
+      );
+    }
+
     const isSelected = isQueenSelected(queen);
     const isHighlighted = isQueenHighlighted(queen);
     const isHovered = hoveredQueen?.id === queen.id;
@@ -156,7 +232,7 @@ export function SleepingQueens({
     <div className={clsx('relative', className)}>
 
       {/* Selection Instructions */}
-      {canSelectQueen && (
+      {canSelectQueen && getSelectionText() && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -165,7 +241,7 @@ export function SleepingQueens({
           <div className="flex items-center space-x-2 text-blue-300">
             <Zap className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {selectedQueen ? 'Queen selected! Play your King to wake her up.' : 'Select any sleeping queen - you won\'t know which one until awakened!'}
+              {getSelectionText()}
             </span>
           </div>
         </motion.div>
@@ -183,7 +259,7 @@ export function SleepingQueens({
                 <div className="flex flex-col gap-3">
                   <AnimatePresence>
                     {block.left.slice(0, 3).map((queen, index) => 
-                      renderQueenCard(queen, index)
+                      renderQueenSlot(queen, index)
                     )}
                   </AnimatePresence>
                 </div>
@@ -192,7 +268,7 @@ export function SleepingQueens({
                 <div className="flex flex-col gap-3">
                   <AnimatePresence>
                     {block.left.slice(3, 6).map((queen, index) => 
-                      renderQueenCard(queen, index + 3)
+                      renderQueenSlot(queen, index + 3)
                     )}
                   </AnimatePresence>
                 </div>
@@ -212,41 +288,31 @@ export function SleepingQueens({
                       backgroundRepeat: 'no-repeat'
                     }}
                   >
-                    {/* Card count indicator */}
-                    <div className="absolute top-1 right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-xs text-white font-bold">
-                        {drawPile.length || '?'}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
-                {/* Discard Pile */}
+                {/* Discard Pile - Drop Zone */}
                 <div className="text-center">
                   <div className="text-xs text-gray-400 mb-2 font-medium">Discard Pile</div>
-                  {discardPile.length > 0 ? (
-                    <div className="relative">
-                      {/* Show the top discarded card */}
-                      <CardComponent
-                        card={discardPile[discardPile.length - 1]}
-                        size="md"
-                        faceDown={false}
-                        interactive={false}
-                        className="border-2 border-gray-400/50 shadow-lg"
-                      />
-                      {/* Card count indicator */}
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">
-                          {discardPile.length}
-                        </span>
+                  <div className="relative">
+                    {discardPile.length > 0 ? (
+                      <div className="relative rounded-lg transition-all">
+                        {/* Show the top discarded card */}
+                        <CardComponent
+                          card={discardPile[discardPile.length - 1]}
+                          size="md"
+                          faceDown={false}
+                          interactive={false}
+                          className="border-2 border-gray-400/50 shadow-lg"
+                        />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-20 h-28 rounded-lg border-2 border-dashed border-gray-500/50 flex flex-col items-center justify-center text-gray-500">
-                      <Plus className="h-8 w-8 mb-1" />
-                      <span className="text-xs">Empty</span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-20 h-28 rounded-lg border-2 border-dashed border-gray-500/50 text-gray-500 flex flex-col items-center justify-center">
+                        <Plus className="h-8 w-8 mb-1" />
+                        <span className="text-xs">Empty</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -256,7 +322,7 @@ export function SleepingQueens({
                 <div className="flex flex-col gap-3">
                   <AnimatePresence>
                     {block.right.slice(0, 3).map((queen, index) => 
-                      renderQueenCard(queen, index + 6)
+                      renderQueenSlot(queen, index + 6)
                     )}
                   </AnimatePresence>
                 </div>
@@ -265,7 +331,7 @@ export function SleepingQueens({
                 <div className="flex flex-col gap-3">
                   <AnimatePresence>
                     {block.right.slice(3, 6).map((queen, index) => 
-                      renderQueenCard(queen, index + 9)
+                      renderQueenSlot(queen, index + 9)
                     )}
                   </AnimatePresence>
                 </div>
@@ -283,14 +349,14 @@ export function SleepingQueens({
       </div>
 
       {/* Empty state for specific scenarios */}
-      {sleepingQueens.length > 0 && canSelectQueen && !selectedQueen && (
+      {sleepingQueens.length > 0 && canSelectQueen && !selectedQueen && getHelpText() && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="mt-6 text-center"
         >
           <p className="text-gray-400 text-sm">
-            Choose wisely - all queens are hidden until awakened!
+            {getHelpText()}
           </p>
         </motion.div>
       )}

@@ -225,7 +225,7 @@ describe('Sleeping Queens - Complete Gameplay Flow Tests', () => {
       
       const result = game.playMove(move);
       expect(result.isValid).toBe(true);
-      expect(result.message).toContain('king');
+      expect(result.message).toContain('King');
       expect(result.message).toContain('keep it and play again');
       
       const newState = (game as any).getInternalState();

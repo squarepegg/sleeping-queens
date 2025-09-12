@@ -36,7 +36,7 @@ export default async function handler(
     }
 
     // Load game engine
-    const game = new SleepingQueensGame(gameData.state);
+    const game = new SleepingQueensGame((gameData as any).state);
 
     // Validate and execute move
     const result = game.playMove(move);
@@ -51,7 +51,7 @@ export default async function handler(
     const newGameState = game.getState();
 
     // Update game in database
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('games')
       .update({ 
         state: newGameState,
@@ -73,9 +73,9 @@ export default async function handler(
       .single();
 
     if (playerExists) {
-      const { error: moveError } = await supabase.from('game_moves').insert({
+      const { error: moveError } = await (supabase as any).from('game_moves').insert({
         game_id: gameId,
-        player_id: move.playerId,
+        player_id: (playerExists as any).id, // Use the actual player.id, not the user_id
         move_data: move,
       });
 

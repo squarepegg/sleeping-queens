@@ -15,13 +15,19 @@ describe('Dragon Blocking Mechanism', () => {
     const state = (game as any).getInternalState();
     console.log('=== DRAGON BLOCKING TEST ===');
     
-    // Give Alice (attacker) a Knight
+    // Clear hands to ensure deterministic setup
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
+    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
+    alicePlayer.hand = [];
+    bobPlayer.hand = [];
+    bobPlayer.queens = [];
+    bobPlayer.score = 0;
+    
+    // Give Alice (attacker) a Knight
     const knightCard = { id: 'test-knight', type: 'knight', name: 'Knight' };
     alicePlayer.hand.push(knightCard);
     
-    // Give Bob (target) a Dragon and a Queen to steal
-    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
+    // Give Bob (target) exactly one Dragon and a Queen to steal
     const dragonCard = { id: 'test-dragon', type: 'dragon', name: 'Dragon' };
     const testQueen = { 
       id: 'test-queen', 
@@ -75,7 +81,7 @@ describe('Dragon Blocking Mechanism', () => {
     expect(blockResult.isValid).toBe(true);
     
     // Check attack was blocked
-    expect(game.getPendingKnightAttack()).toBeNull();
+    expect(game.getPendingKnightAttack()).toBeUndefined();
     expect(game.canPlayerPlayDragon('bob')).toBe(false);
     
     // Verify Bob still has his queen
@@ -87,6 +93,8 @@ describe('Dragon Blocking Mechanism', () => {
     console.log('Final Alice queens:', finalAlice.queens.map((q: any) => q.name));
     console.log('Final Bob score:', finalBob.score);
     console.log('Final Alice score:', finalAlice.score);
+    console.log('Final Bob hand after dragon block:', finalBob.hand.map((c: any) => `${c.type}-${c.name || c.value}`));
+    console.log('Discard pile:', finalState.discardPile.map((c: any) => `${c.type}-${c.name || c.value}`));
     
     expect(finalBob.queens).toHaveLength(1);
     expect(finalBob.queens[0].name).toBe('Test Queen');
@@ -110,13 +118,19 @@ describe('Dragon Blocking Mechanism', () => {
     
     const state = (game as any).getInternalState();
     
-    // Give Alice (attacker) a Knight
+    // Clear hands to ensure deterministic setup
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
+    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
+    alicePlayer.hand = [];
+    bobPlayer.hand = []; // Ensure Bob has NO Dragons
+    bobPlayer.queens = [];
+    bobPlayer.score = 0;
+    
+    // Give Alice (attacker) a Knight
     const knightCard = { id: 'test-knight', type: 'knight', name: 'Knight' };
     alicePlayer.hand.push(knightCard);
     
     // Give Bob (target) a Queen but NO Dragon
-    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
     const testQueen = { 
       id: 'test-queen', 
       type: 'queen', 
@@ -148,7 +162,7 @@ describe('Dragon Blocking Mechanism', () => {
     expect(knightResult.requiresResponse).toBeUndefined(); // No pending response needed
     
     // Check no pending attack
-    expect(game.getPendingKnightAttack()).toBeNull();
+    expect(game.getPendingKnightAttack()).toBeUndefined();
     
     // Verify Alice got the queen
     const finalState = (game as any).getInternalState();
@@ -174,13 +188,19 @@ describe('Dragon Blocking Mechanism', () => {
     
     const state = (game as any).getInternalState();
     
-    // Give Alice (attacker) a Knight
+    // Clear hands to ensure deterministic setup
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
+    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
+    alicePlayer.hand = [];
+    bobPlayer.hand = [];
+    bobPlayer.queens = [];
+    bobPlayer.score = 0;
+    
+    // Give Alice (attacker) a Knight
     const knightCard = { id: 'test-knight', type: 'knight', name: 'Knight' };
     alicePlayer.hand.push(knightCard);
     
-    // Give Bob (target) a Dragon and a Queen
-    const bobPlayer = state.players.find((p: any) => p.id === 'bob');
+    // Give Bob (target) exactly one Dragon and a Queen
     const dragonCard = { id: 'test-dragon', type: 'dragon', name: 'Dragon' };
     const testQueen = { 
       id: 'test-queen', 
@@ -215,7 +235,7 @@ describe('Dragon Blocking Mechanism', () => {
     expect(allowResult.isValid).toBe(true);
     
     // Check attack completed
-    expect(game.getPendingKnightAttack()).toBeNull();
+    expect(game.getPendingKnightAttack()).toBeUndefined();
     
     // Verify Alice got the queen and Bob lost it
     const finalState = (game as any).getInternalState();

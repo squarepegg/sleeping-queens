@@ -22,7 +22,7 @@ export default async function handler(
     const gameState = game.getState();
 
     // Save to database
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('games')
       .insert({
         id: gameState.id,
