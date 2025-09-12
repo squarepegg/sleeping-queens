@@ -241,7 +241,7 @@ See [TESTING.md](TESTING.md) for detailed testing documentation.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## 🎉 Acknowledgments
 
@@ -249,26 +249,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Built with modern web technologies and lots of ✨
 - Special thanks to the React, Next.js, and Supabase communities
 
-## 🐛 Known Issues & Future Features
-
-### Known Issues
-- Math equation validation could be more robust
-- Dragon defense timing could be improved for mobile users
-
-### Future Features
-- [ ] Tournament mode with brackets
-- [ ] AI opponents for solo play  
-- [ ] Custom card themes and designs
-- [ ] Game replay and statistics
-- [ ] Voice chat integration
-- [ ] Progressive Web App (PWA) support
-
 ## 💬 Support
 
 For questions, bug reports, or feature requests, please:
 1. Check existing [GitHub Issues](https://github.com/your-username/sleeping-queens/issues)
 2. Create a new issue with detailed description
-3. Join our Discord community (coming soon!)
 
 ---
 
