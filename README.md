@@ -257,6 +257,6 @@ For questions, bug reports, or feature requests, please:
 
 ---
 
-**Made with 💜 by [Your Name]** 
+**Made with 💜 squarepegg and AI** 
 
 *Wake the queens, claim your victory!* 👑✨
