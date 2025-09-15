@@ -15,7 +15,7 @@ describe('Special Actions - Players Acting Out of Turn', () => {
   describe('Jester Number Count Selection', () => {
     it('should allow target player to select queen after Jester number count', () => {
       // Setup: Ensure player1 has a Jester card (find it in their hand)
-      let gameState = game.getState();
+      const gameState = game.getState();
       const player1 = gameState.players[0];
 
       // Find a jester in player1's hand or add one

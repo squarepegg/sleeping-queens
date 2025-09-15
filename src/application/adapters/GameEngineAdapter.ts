@@ -149,7 +149,7 @@ export class GameEngineAdapter {
     }
 
     // Deal cards to players - create new deck and players arrays
-    let newDeck = [...this.gameState.deck];
+    const newDeck = [...this.gameState.deck];
     const newPlayers = this.gameState.players.map(player => {
       const newHand: Card[] = [];
       for (let i = 0; i < 5; i++) {

@@ -43,7 +43,7 @@ export class PlayKingCommand implements Command<GameState> {
 
     // Create new state with immutable updates
     const kingCard = player.hand.find(c => c.id === cardId)!;
-    let newHand = player.hand.filter(c => c.id !== cardId);
+    const newHand = player.hand.filter(c => c.id !== cardId);
     const newQueens = [...player.queens, { ...targetQueen, isAwake: true }];
     const newSleepingQueens = this.state.sleepingQueens.filter(q => q.id !== targetQueenId);
     let newDiscardPile = [...this.state.discardPile, kingCard];

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Production build
+.next/
+out/
+dist/
+
+# Testing
+coverage/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Debug scripts (root directory)
+debug-*.js
+test-*.js
+test-*.ts
+verify-*.js
+verify-*.ts
+
+# Logs
+*.log
+
+# Next.js
+next-env.d.ts
+
+# Generated files
+public/sw.js
+public/workbox-*.js

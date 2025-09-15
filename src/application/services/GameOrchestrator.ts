@@ -186,7 +186,7 @@ export class GameOrchestrator {
             const newDiscardPile = [...state.discardPile, dragonCard];
 
             // Draw replacement card if hand is below 5
-            let newDeck = [...state.deck];
+            const newDeck = [...state.deck];
             if (newHand.length < 5 && newDeck.length > 0) {
               newHand.push(newDeck.pop()!);
             }
@@ -213,7 +213,7 @@ export class GameOrchestrator {
             const newDiscardPile = [...state.discardPile, wandCard];
 
             // Draw replacement card if hand is below 5
-            let newDeck = [...state.deck];
+            const newDeck = [...state.deck];
             if (newHand.length < 5 && newDeck.length > 0) {
               newHand.push(newDeck.pop()!);
             }
@@ -260,7 +260,7 @@ export class GameOrchestrator {
         const cards = move.cards || [];
 
         // Create new hand without the played cards
-        let newHand = player.hand.filter(c => !cards.some(card => card.id === c.id));
+        const newHand = player.hand.filter(c => !cards.some(card => card.id === c.id));
         let newDiscardPile = [...state.discardPile, ...cards];
         let newDeck = [...state.deck];
 
@@ -287,8 +287,8 @@ export class GameOrchestrator {
         }
 
         // Wake a queen if equation is valid
-        let newSleepingQueens = [...state.sleepingQueens];
-        let newQueens = [...player.queens];
+        const newSleepingQueens = [...state.sleepingQueens];
+        const newQueens = [...player.queens];
 
         if (newSleepingQueens.length > 0) {
           const targetQueenId = move.targetQueenId || move.targetCard?.id;
@@ -369,7 +369,7 @@ export class GameOrchestrator {
         const newTargetQueens = target.queens.filter(q => q.id !== attack.targetQueen.id);
 
         // Check for Cat/Dog conflict
-        let newSleepingQueens = [...state.sleepingQueens];
+        const newSleepingQueens = [...state.sleepingQueens];
         const hasCatQueen = newAttackerQueens.some(q => q.name === 'Cat Queen');
         const hasDogQueen = newAttackerQueens.some(q => q.name === 'Dog Queen');
         let finalAttackerQueens = newAttackerQueens;
@@ -426,8 +426,8 @@ export class GameOrchestrator {
       canExecute: function() { return this.validate().isValid; },
       execute: () => {
         const attack = state.pendingPotionAttack!;
-        let newSleepingQueens = [...state.sleepingQueens];
-        let newPlayers = [...state.players];
+        const newSleepingQueens = [...state.sleepingQueens];
+        const newPlayers = [...state.players];
 
         if (attack.target) {
           // Stealing opponent's queen - put it to sleep

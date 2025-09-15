@@ -68,7 +68,7 @@ export class PlayKnightCommand implements Command<GameState> {
 
       // Remove knight card from attacker's hand and add to discard pile
       const knightCard = player.hand.find(c => c.id === cardId)!;
-      let newAttackerHand = player.hand.filter(c => c.id !== cardId);
+      const newAttackerHand = player.hand.filter(c => c.id !== cardId);
       let newDiscardPile = [...this.state.discardPile, knightCard];
       let newDeck = [...this.state.deck];
 
@@ -110,12 +110,12 @@ export class PlayKnightCommand implements Command<GameState> {
     } else {
       // Execute attack immediately
       const knightCard = player.hand.find(c => c.id === cardId)!;
-      let newAttackerHand = player.hand.filter(c => c.id !== cardId);
+      const newAttackerHand = player.hand.filter(c => c.id !== cardId);
       let newAttackerQueens = [...player.queens, targetQueen];
-      let newTargetQueens = targetPlayer.queens.filter(q => q.id !== targetQueenId);
+      const newTargetQueens = targetPlayer.queens.filter(q => q.id !== targetQueenId);
       let newDiscardPile = [...this.state.discardPile, knightCard];
       let newDeck = [...this.state.deck];
-      let newSleepingQueens = [...this.state.sleepingQueens];
+      const newSleepingQueens = [...this.state.sleepingQueens];
 
       // Check for Cat/Dog Queen conflict for attacker
       const hasCatQueen = newAttackerQueens.some(q => q.name === 'Cat Queen');

@@ -237,8 +237,11 @@ npm test src/domain/__tests__/cards.test.ts
 # Type checking (Note: Some presentation layer types may need attention)
 npm run type-check
 
-# Linting
+# Linting - check for code quality issues
 npm run lint
+
+# Linting - automatically fix issues where possible
+npm run lint:fix
 
 # Build verification
 npm run build

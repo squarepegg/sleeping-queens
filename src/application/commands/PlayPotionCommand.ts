@@ -73,7 +73,7 @@ export class PlayPotionCommand implements Command<GameState> {
       };
 
       // Remove potion from hand and draw replacement
-      let newHand = player.hand.filter(c => c.id !== cardId);
+      const newHand = player.hand.filter(c => c.id !== cardId);
       let newDiscardPile = [...this.state.discardPile, potionCard];
       let newDeck = [...this.state.deck];
 
@@ -101,11 +101,11 @@ export class PlayPotionCommand implements Command<GameState> {
       };
     } else {
       // No defense - execute the steal immediately
-      let newAttackerHand = player.hand.filter(c => c.id !== cardId);
+      const newAttackerHand = player.hand.filter(c => c.id !== cardId);
       const newTargetQueens = targetPlayer.queens.filter(q => q.id !== targetQueenId);
       let newDiscardPile = [...this.state.discardPile, potionCard];
       let newDeck = [...this.state.deck];
-      let newSleepingQueens = [...this.state.sleepingQueens];
+      const newSleepingQueens = [...this.state.sleepingQueens];
 
       // Put the queen to sleep
       newSleepingQueens.push({ ...targetQueen, isAwake: false });
@@ -163,7 +163,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
     // Create new hand without potion and draw replacement
     const potionCard = player.hand[cardIndex];
-    let newHand = player.hand.filter(c => c.id !== cardId);
+    const newHand = player.hand.filter(c => c.id !== cardId);
     let newDiscardPile = [...this.state.discardPile, potionCard];
     let newDeck = [...this.state.deck];
 

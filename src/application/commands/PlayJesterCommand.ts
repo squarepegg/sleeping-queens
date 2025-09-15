@@ -59,7 +59,7 @@ export class PlayJesterCommand implements Command<GameState> {
 
     // Create new hand without jester
     const jesterCard = player.hand[cardIndex];
-    let newHand = player.hand.filter(c => c.id !== cardId);
+    const newHand = player.hand.filter(c => c.id !== cardId);
     let newDiscardPile = [...this.state.discardPile, jesterCard];
     let newDeck = [...this.state.deck];
 
@@ -172,7 +172,7 @@ export class PlayJesterCommand implements Command<GameState> {
     if (jesterPlayer && jesterPlayerIndex !== -1) {
       // Get the current player state (might have been updated if they got the queen)
       const currentJesterPlayer = newPlayers[jesterPlayerIndex];
-      let newJesterHand = [...currentJesterPlayer.hand];
+      const newJesterHand = [...currentJesterPlayer.hand];
 
       // Only draw if the jester player's hand is below 5 cards
       if (newJesterHand.length < 5) {
