@@ -114,15 +114,6 @@ describe('SleepingQueensGame', () => {
       expect(success).toBe(false);
       expect(game.getState().players).toHaveLength(1);
     });
-
-    // Skipping player removal tests - doesn't make sense for Sleeping Queens game logic
-    test.skip('should remove players successfully', () => {
-      // Players should not be removed mid-game in Sleeping Queens
-    });
-
-    test.skip('should adjust current player index when removing players', () => {
-      // Players should not be removed mid-game in Sleeping Queens
-    });
   });
 
   describe('Game Start', () => {
@@ -384,10 +375,6 @@ describe('SleepingQueensGame', () => {
       const newState = game.getState();
       expect(newState.currentPlayerIndex).toBe((initialPlayerIndex + 1) % initialState.players.length);
     });
-
-    test.skip('should get current turn player', () => {
-      // This functionality is not needed - currentPlayerId is tracked in state
-    });
   });
 
   describe('Win Conditions', () => {
@@ -461,10 +448,6 @@ describe('SleepingQueensGame', () => {
       // Should handle gracefully without crashing
       const result = game.playMove(move);
       expect(result.isValid).toBe(false);
-    });
-
-    test.skip('should handle player disconnection during game', () => {
-      // Player disconnection handling should be done at the session level, not by removing players from the game
     });
   });
 });
