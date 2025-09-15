@@ -1,4 +1,4 @@
-import { QUEENS } from './src/game/cards';
+import {QUEENS} from '@/domain/factories/CardFactory';
 
 // These are the correct queen IDs that should be in NewGameBoard
 const correctQueenIds = [

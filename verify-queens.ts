@@ -1,5 +1,5 @@
-import { createSleepingQueens, QUEENS } from './src/game/cards';
-import { GameEngine } from './src/game/engine/GameEngine';
+import {createSleepingQueens, QUEENS} from '@/domain/factories/CardFactory';
+import {GameEngine} from './src/game/engine/GameEngine';
 
 console.log('QUEENS array length:', QUEENS.length);
 console.log('QUEENS names:', QUEENS.map(q => q.name));

@@ -1,5 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../../lib/supabase';
+import type {NextApiRequest, NextApiResponse} from 'next';
+import {supabase} from '../../../lib/supabase';
 
 function generateSessionToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);

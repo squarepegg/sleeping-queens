@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import {useEffect, useState} from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { Crown, Play, Users, Sparkles } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { useAuth } from '../lib/hooks/useAuth';
+import {useRouter} from 'next/router';
+import {motion} from 'framer-motion';
+import {Crown, Play, Sparkles, Users} from 'lucide-react';
+import {Button} from '../presentation/components/ui/Button';
+import {Card} from '../presentation/components/ui/Card';
+import {useAuth} from '../lib/hooks/useAuth';
 
 export default function Home() {
   const router = useRouter();

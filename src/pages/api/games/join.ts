@@ -1,8 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { GameEngine as SleepingQueensGame } from '../../../game/engine/GameEngine';
-import { supabase } from '@/lib/supabase';
-import { realtimeService } from '../../../services/RealtimeService';
-import { subscribeWithTimeout, safeUnsubscribe } from '@/lib/utils/supabase-helpers';
+import type {NextApiRequest, NextApiResponse} from 'next';
+// MIGRATION: Using GameEngineAdapter with new clean architecture
+import {GameEngineAdapter as SleepingQueensGame} from '../../../application/adapters/GameEngineAdapter';
+import {supabase} from '@/lib/supabase';
+import {safeUnsubscribe, subscribeWithTimeout} from '@/lib/utils/supabase-helpers';
 
 export default async function handler(
   req: NextApiRequest,

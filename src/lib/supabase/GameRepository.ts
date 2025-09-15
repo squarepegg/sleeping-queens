@@ -1,6 +1,6 @@
-import { supabase } from '../supabase';
-import { GameState } from '../../game/types';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import {supabase} from '../supabase';
+import {GameState} from '@/domain/models/GameState';
+import {RealtimeChannel} from '@supabase/supabase-js';
 
 export interface GameRecord {
   id: string;

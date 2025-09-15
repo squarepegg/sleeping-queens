@@ -1,8 +1,4 @@
-import { 
-  validateMathEquation, 
-  isValidEquationString, 
-  getAllValidEquations 
-} from '../mathValidator';
+import {getAllValidEquations, isValidEquationString, validateMathEquation} from '../mathValidator';
 
 describe('mathValidator', () => {
   describe('validateMathEquation', () => {

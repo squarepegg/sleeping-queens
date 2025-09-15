@@ -121,13 +121,16 @@ RULES:
 RULES:
 - Reveal top card of draw pile
 - IF power card (King/Knight/Dragon/Potion/Wand/Jester):
-  → Add to hand and take another turn immediately
+  → Add revealed card to hand (replacing the played Jester)
+  → Player takes another turn immediately (play again)
 - IF number card:
   → Count players from current player going left
   → Count equals the number on revealed card
   → Counted player wakes a sleeping queen
   → Discard the revealed number card
+  → After queen selection, turn advances to next player in order
 - Counting wraps around table if necessary
+- IMPORTANT: Turn behavior differs based on revealed card type
 ```
 
 #### ACTION E: Discard Cards
@@ -288,7 +291,9 @@ ALWAYS_TRUE:
 1. **Rose Queen giving bonus when stolen** - WRONG
 2. **Defense cards played after delay** - WRONG
 3. **Defense using defender's turn** - WRONG
-4. **Jester giving queen to current player always** - WRONG
+4. **Jester turn handling** - IMPORTANT:
+   - Number card: Turn advances to next player AFTER counted player selects queen
+   - Power card: Current player gets another turn immediately
 5. **Cat/Dog both kept** - WRONG
 6. **Playing actions without required targets** - WRONG
 7. **Hand not refilled to 5** - WRONG

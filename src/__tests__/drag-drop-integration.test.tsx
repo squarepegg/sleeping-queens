@@ -1,13 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { DraggableCard } from '@/components/game/DraggableCard';
-import { DroppableArea, StagingDropArea } from '@/components/game/DroppableArea';
-import { Card } from '@/game/types';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {DndContext, DragOverlay} from '@dnd-kit/core';
+import {DraggableCard} from '@/presentation/components/game/DraggableCard';
+import {DroppableArea, StagingDropArea} from '@/presentation/components/game/DroppableArea';
+import {Card, NumberCard} from '@/domain/models/Card';
 import '@testing-library/jest-dom';
 
 describe('Drag and Drop Integration', () => {
-  const mockCard: Card = {
+  const mockCard: NumberCard = {
     id: 'test-card-1',
     type: 'number',
     name: '5',
@@ -180,7 +180,7 @@ describe('Drag and Drop Integration', () => {
 
         return (
           <DndContext 
-            onDragStart={(e) => setDraggedCard(mockCard)}
+            onDragStart={() => setDraggedCard(mockCard)}
             onDragEnd={handleDragEnd}
           >
             <div style={{ display: 'flex', gap: '20px' }}>
@@ -307,7 +307,7 @@ describe('Drag and Drop Integration', () => {
         </DndContext>
       );
 
-      const draggableElement = container.querySelector('.draggable-card');
+      const draggableElement = container.querySelector('.draggable-card') as HTMLElement;
       expect(draggableElement).toBeTruthy();
       // Check for inline style directly
       expect(draggableElement?.style.touchAction).toBe('none');

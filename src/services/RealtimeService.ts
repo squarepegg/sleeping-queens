@@ -1,6 +1,6 @@
-import { RealtimeChannel, RealtimeChannelSendResponse } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import { GameState } from '../game/types';
+import {RealtimeChannel, RealtimeChannelSendResponse} from '@supabase/supabase-js';
+import {supabase} from '../lib/supabase';
+import {GameState} from '../domain/models/GameState';
 
 /**
  * Centralized service for managing Supabase realtime subscriptions.

@@ -1,4 +1,5 @@
-import { GameMove, GameState, MoveValidationResult } from '../game/types';
+import {GameMove, MoveValidationResult} from '../domain/models/GameMove';
+import {GameState} from '../domain/models/GameState';
 
 /**
  * Centralized service for all game-related API calls.

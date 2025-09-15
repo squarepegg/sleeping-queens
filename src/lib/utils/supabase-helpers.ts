@@ -1,4 +1,4 @@
-import { RealtimeChannel } from '@supabase/supabase-js';
+import {RealtimeChannel} from '@supabase/supabase-js';
 
 /**
  * Production-ready Supabase helper utilities

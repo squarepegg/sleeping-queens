@@ -1,7 +1,7 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { Crown, Home } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import {useRouter} from 'next/router';
+import {Crown, Home} from 'lucide-react';
+import {Button} from '../presentation/components/ui/Button';
 
 export default function Custom404() {
   const router = useRouter();

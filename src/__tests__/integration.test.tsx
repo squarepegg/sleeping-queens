@@ -7,8 +7,8 @@
  * 3. Context hook usage bugs
  */
 
-import { render, act, waitFor } from '@testing-library/react'
-import { GameStateProvider, useGameState } from '../lib/context/GameStateContextNew'
+import {act, render, waitFor} from '@testing-library/react'
+import {GameStateProvider, useGameState} from '../lib/context/GameStateContext'
 import React from 'react'
 
 // Mock successful auth

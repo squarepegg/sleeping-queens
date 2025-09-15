@@ -1,7 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { GameEngine as SleepingQueensGame } from '../../../../game/engine/GameEngine';
-import { supabase } from '../../../../lib/supabase';
-import { filterGameStateForPlayer } from '../../../../lib/utils/gameStateFilter';
+import type {NextApiRequest, NextApiResponse} from 'next';
+// MIGRATION: Using GameEngineAdapter with new clean architecture
+import {supabase} from '../../../../lib/supabase';
+import {filterGameStateForPlayer} from '../../../../lib/utils/gameStateFilter';
 
 export default async function handler(
   req: NextApiRequest,

@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import {useEffect, useState} from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, LogOut, Plus, Hash } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { CreateGame } from '../components/lobby/CreateGame';
-import { JoinGame } from '../components/lobby/JoinGame';
-import { useAuth } from '../lib/hooks/useAuth';
+import {useRouter} from 'next/router';
+import {AnimatePresence, motion} from 'framer-motion';
+import {Crown, Hash, LogOut, Plus} from 'lucide-react';
+import {Button} from '../presentation/components/ui/Button';
+import {CreateGame} from '../presentation/components/lobby/CreateGame';
+import {JoinGame} from '../presentation/components/lobby/JoinGame';
+import {useAuth} from '../lib/hooks/useAuth';
 
 export default function Lobby() {
   const router = useRouter();

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Card } from '@/game/types';
+import React, {createContext, useCallback, useContext, useState} from 'react';
+import {Card} from '@/domain/models/Card';
 
 interface DragDropState {
   draggedCard: Card | null;

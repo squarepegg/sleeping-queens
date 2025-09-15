@@ -1,6 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
-import { subscribeWithTimeout, safeUnsubscribe } from '@/lib/utils/supabase-helpers';
+import type {NextApiRequest, NextApiResponse} from 'next';
+import {supabase} from '@/lib/supabase';
+import {safeUnsubscribe, subscribeWithTimeout} from '@/lib/utils/supabase-helpers';
 
 export default async function handler(
   req: NextApiRequest,

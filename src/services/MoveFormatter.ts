@@ -1,4 +1,4 @@
-import { GameMove, Player } from '../game/types';
+import {Player} from '../domain/models/Player';
 
 /**
  * Service for formatting game moves into human-readable messages.

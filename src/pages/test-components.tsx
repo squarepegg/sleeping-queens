@@ -1,8 +1,8 @@
 import React from 'react';
 import Head from 'next/head';
-import { useAuth } from '../lib/hooks/useAuth';
-import { GameStateProvider } from '../lib/context/GameStateContextNew';
-import { NewGameBoard } from '../components/game/NewGameBoard';
+import {useAuth} from '../lib/hooks/useAuth';
+import {GameStateProvider} from '../lib/context/GameStateContext';
+import {NewGameBoard} from '../presentation/components/game/NewGameBoard';
 
 /**
  * Test page for new modular components in isolation

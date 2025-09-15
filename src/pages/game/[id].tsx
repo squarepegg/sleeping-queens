@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import React, {useEffect} from 'react';
+import {useRouter} from 'next/router';
 import Head from 'next/head';
-import { useAuth } from '../../lib/hooks/useAuth';
-import { supabase } from '../../lib/supabase';
-import { GameLobby } from '../../components/lobby/GameLobby';
-import { GameStateProvider, useGameState } from '../../lib/context/GameStateContextNew';
-import { NewGameBoard } from '../../components/game/NewGameBoard';
+import {useAuth} from '../../lib/hooks/useAuth';
+import {GameLobby} from '../../presentation/components/lobby/GameLobby';
+import {GameStateProvider, useGameState} from '../../lib/context/GameStateContext';
+import {NewGameBoard} from '../../presentation/components/game/NewGameBoard';
 
 // Component to display game state for debugging
 function GameStateDisplay() {

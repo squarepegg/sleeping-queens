@@ -8,11 +8,11 @@
  */
 
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { GameStateProvider } from '../lib/context/GameStateContextNew'
-import { CreateGame } from '../components/lobby/CreateGame'
+import {fireEvent, render, screen, waitFor} from '@testing-library/react'
+import {GameStateProvider} from '../lib/context/GameStateContext'
+import {CreateGame} from '../presentation/components/lobby/CreateGame'
 // import { GameBoard } from '../components/game/GameBoard' // Removed - using NewGameBoard now
-import { gameApiService } from '@/services/GameApiService'
+import {gameApiService} from '@/services/GameApiService'
 
 // Mock Next.js router
 const mockPush = jest.fn();

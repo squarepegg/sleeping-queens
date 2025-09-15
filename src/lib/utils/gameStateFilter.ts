@@ -1,4 +1,5 @@
-import { GameState, Player } from '../../game/types';
+import {GameState} from '../../domain/models/GameState';
+import {Player} from '../../domain/models/Player';
 
 /**
  * Filters game state to only show information that should be visible to a specific player.

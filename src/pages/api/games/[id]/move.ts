@@ -1,8 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { GameEngine as SleepingQueensGame } from '../../../../game/engine/GameEngine';
-import { GameMove } from '../../../../game/types';
-import { supabase } from '../../../../lib/supabase';
-import { subscribeWithTimeout, safeUnsubscribe } from '../../../../lib/utils/supabase-helpers';
+import type {NextApiRequest, NextApiResponse} from 'next';
+// MIGRATION: Using GameEngineAdapter with new clean architecture
+import {GameEngineAdapter as SleepingQueensGame} from '../../../../application/adapters/GameEngineAdapter';
+import {GameMove} from '../../../../domain/models/GameMove';
+import {supabase} from '../../../../lib/supabase';
+import {safeUnsubscribe, subscribeWithTimeout} from '../../../../lib/utils/supabase-helpers';
 
 export default async function handler(
   req: NextApiRequest,
@@ -63,17 +64,20 @@ export default async function handler(
     }
 
     const newGameState = game.getState();
-    
-    // Update version and tracking info
-    newGameState.version = ((gameData as any).state.version || 0) + 1;
-    newGameState.lastMoveId = moveId;
-    newGameState.lastMoveBy = move.playerId;
+
+    // Create a new state object with updated version and tracking info
+    const updatedGameState = {
+      ...newGameState,
+      version: ((gameData as any).state.version || 0) + 1,
+      lastMoveId: moveId,
+      lastMoveBy: move.playerId
+    };
 
     // Update game in database
     const { error: updateError } = await (supabase as any)
       .from('games')
-      .update({ 
-        state: newGameState,
+      .update({
+        state: updatedGameState,
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId);
