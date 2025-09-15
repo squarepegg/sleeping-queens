@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import {useRouter} from 'next/router';
 import {Crown, Home} from 'lucide-react';
-import {Button} from '../presentation/components/ui/Button';
+import {Button} from '@/presentation/components/ui/Button';
 
 export default function Custom404() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function Custom404() {
               This queen is still sleeping
             </h2>
             <p className="text-gray-300 mb-8">
-              The page you're looking for doesn't exist in our magical kingdom.
+              The page you&#39;re looking for doesn&#39;t exist in our magical kingdom.
             </p>
           </div>
 

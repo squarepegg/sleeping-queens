@@ -31,6 +31,16 @@ export interface JesterReveal {
   readonly powerCardRevealed?: boolean; // For message generation when power card revealed
 }
 
+export interface LastAction {
+  readonly playerId: string;
+  readonly playerName: string;
+  readonly actionType: 'discard' | 'play_king' | 'play_knight' | 'play_potion' | 'play_jester' | 'play_dragon' | 'play_wand' | 'play_math';
+  readonly cards: ReadonlyArray<Card>;
+  readonly drawnCount?: number;
+  readonly message?: string;
+  readonly timestamp: number;
+}
+
 export interface GameState {
   readonly id: string;
   readonly players: ReadonlyArray<Player>;
@@ -58,6 +68,7 @@ export interface GameState {
   readonly potionQueenSelection?: PotionQueenSelection;
   readonly roseQueenBonus?: RoseQueenBonus;
   readonly gameMessage?: string;
+  readonly lastAction?: LastAction;
 }
 
 // Domain logic for GameState

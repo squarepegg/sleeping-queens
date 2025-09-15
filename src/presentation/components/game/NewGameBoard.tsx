@@ -22,6 +22,8 @@ import {Player} from '@/domain/models/Player';
 import {DrawDiscardPiles} from './DrawDiscardPiles';
 import {DraggableCard, DragOverlay as CardDragOverlay} from './DraggableCard';
 import {DroppableArea} from './DroppableArea';
+import {PlayAreaDropZone} from './PlayAreaDropZone';
+import {PlayedCardsPopover} from './PlayedCardsPopover';
 
 // Import modals
 import {DragonBlockModal} from './modals/DragonBlockModal';
@@ -49,6 +51,7 @@ export function NewGameBoard() {
   const [selectedQueen, setSelectedQueen] = useState<Queen | null>(null);
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);  // For multi-select
+  const [showPopover, setShowPopover] = useState(false);
   
   // Configure sensors for both mouse and touch with better settings
   const pointerSensor = useSensor(PointerSensor, {
@@ -75,7 +78,7 @@ export function NewGameBoard() {
   );
   
   // Memoized values - Now using UUID properly
-  const currentUserId = user?.id!; // Non-null assertion since auth is required for game
+  const currentUserId = user?.id || ''; // Fallback to empty string if no user
   const currentUsername = user?.username;
   const players = gameState?.players || [];
   
@@ -218,8 +221,8 @@ export function NewGameBoard() {
     const sourceId = active.id.toString();
     const targetId = over.id.toString();
 
-    // Card dragged from hand to staging area
-    if (sourceId.startsWith('hand-') && targetId === 'staging') {
+    // Card dragged from hand to play area
+    if (sourceId.startsWith('hand-') && targetId === 'play-area') {
       // Check if the dragged card is part of a selection
       const isDraggedCardSelected = selectedCards.some(c => c.id === draggedCard.id);
 
@@ -233,15 +236,9 @@ export function NewGameBoard() {
         setStagedCards(prev => [...prev, card]);
       }
 
-      // Clear selection after dragging
+      // Show popover and clear selection
+      setShowPopover(true);
       setSelectedCards([]);
-      return;
-    }
-
-    // Card dragged back from staging to hand
-    if (sourceId.startsWith('staging-') && targetId === 'hand') {
-      // Remove card from staged cards
-      setStagedCards(prev => prev.filter(c => c.id !== draggedCard.id));
       return;
     }
   }, [currentUserId, currentUserPlayer, canInteract, selectedCards]);
@@ -339,8 +336,24 @@ export function NewGameBoard() {
   }, [gameState, currentUserId, playMove]);
   
   // Clear staged cards
-  const handleClearStagedCards = useCallback(() => {
+  const handleClearStagedCards = useCallback(async () => {
+    // If we have action cards staged on the server, clear them
+    if (currentPlayerStagedCards.length > 0 &&
+        currentPlayerStagedCards.some((c: any) => ['king', 'knight', 'potion'].includes(c.type))) {
+      await playMove({
+        type: 'clear_staged',
+        playerId: currentUserId,
+        timestamp: Date.now()
+      });
+    }
     setStagedCards([]);
+    setShowPopover(false);
+  }, [currentPlayerStagedCards, currentUserId, playMove]);
+
+  // Handle card drop on play area
+  const handleCardDropOnPlayArea = useCallback((card: Card) => {
+    setStagedCards(prev => [...prev, card]);
+    setShowPopover(true);
   }, []);
   
   // Auto-complete attacks when defense time expires
@@ -603,23 +616,12 @@ export function NewGameBoard() {
     return player.queens?.reduce((sum, queen) => sum + (queen.points || 0), 0) || 0;
   };
   
-  if (!gameState) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading game...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  const pendingKnightAttack = gameState.pendingKnightAttack;
-  const pendingPotionAttack = gameState.pendingPotionAttack;
-  const winner = gameState.winner ? players.find(p => p.id === gameState.winner) : null;
-  const jesterReveal = gameState.jesterReveal;
+  const pendingKnightAttack = gameState?.pendingKnightAttack;
+  const pendingPotionAttack = gameState?.pendingPotionAttack;
+  const winner = gameState?.winner ? players.find(p => p.id === gameState?.winner) : null;
+  const jesterReveal = gameState?.jesterReveal;
 
-  // Debug logging for pending attacks
+  // Debug logging for pending attacks - moved before early return
   useEffect(() => {
     if (pendingKnightAttack) {
       console.log('[NewGameBoard] Pending Knight Attack detected:', {
@@ -670,9 +672,21 @@ export function NewGameBoard() {
 
     // Map each position to either the queen object or null if awakened
     return allQueenIds.map(id => {
-      return gameState.sleepingQueens.find(q => q.id === id) || null;
+      return gameState?.sleepingQueens?.find(q => q.id === id) || null;
     });
-  }, [gameState.sleepingQueens]);
+  }, [gameState?.sleepingQueens]);
+
+  // Early return after all hooks are defined
+  if (!gameState) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading game...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Render sleeping queen card or empty space
   const renderSleepingQueenSlot = (position: number) => {
@@ -703,7 +717,7 @@ export function NewGameBoard() {
             isSelected
               ? 'border-blue-400 ring-2 ring-blue-400/50 scale-105 cursor-pointer'
               : canSelectSleepingQueen
-                ? 'border-purple-400/50 hover:border-purple-400 hover:scale-105 cursor-pointer'
+                ? 'border-yellow-400 hover:border-yellow-300 hover:scale-105 cursor-pointer animate-pulse'
                 : 'border-gray-600/50'
           )}
         >
@@ -733,7 +747,26 @@ export function NewGameBoard() {
     >
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
         <div className="max-w-7xl mx-auto h-full flex flex-col">
-          
+
+          {/* Played Cards Popover - Shows staged cards and jester reveals */}
+          {console.log('[NewGameBoard] Passing to popover:', {
+            lastAction: gameState.lastAction,
+            stagedCards: showPopover ? stagedCards : currentPlayerStagedCards
+          })}
+          <PlayedCardsPopover
+            stagedCards={showPopover ? stagedCards : currentPlayerStagedCards}
+            jesterRevealedCard={jesterReveal?.powerCardRevealed ? jesterReveal.revealedCard : undefined}
+            lastAction={gameState.lastAction}
+            currentPlayerId={currentUserId}
+            onDismiss={handleClearStagedCards}
+            autoDismissMs={
+              // Don't auto-dismiss for action cards that need targets
+              (currentPlayerStagedCards.some((c: any) => ['king', 'knight', 'potion'].includes(c.type))) ? 0 :
+              gameState.lastAction ? 6000 :
+              jesterReveal?.powerCardRevealed ? 8000 : 5000
+            }
+          />
+
           {/* Jester Reveal Notification */}
           {jesterReveal && (
             <div className="mb-4 p-4 bg-yellow-500/20 backdrop-blur-sm rounded-lg border-2 border-yellow-400/50">
@@ -807,9 +840,15 @@ export function NewGameBoard() {
             <div className="flex-1 flex flex-col gap-4">
               
               {/* Play Area with Sleeping Queens and Piles */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-6">
+              <div className="relative bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-6">
+                {/* Play Area Drop Zone - overlays the entire play area */}
+                <PlayAreaDropZone
+                  isCurrentTurn={isMyTurn}
+                  canPlayCards={canInteract}
+                />
+
                 <div className="flex items-center justify-center gap-8">
-                  
+
                   {/* Left Queens (2x3 grid) */}
                   <div className="grid grid-cols-2 gap-2">
                     {[0, 1, 2, 3, 4, 5].map(position =>
@@ -831,45 +870,6 @@ export function NewGameBoard() {
                   </div>
                 </div>
               </div>
-              
-              {/* Staging Area - Using DroppableArea */}
-              <DroppableArea 
-                id="staging"
-                className={clsx(
-                  'min-h-[120px] bg-white/5 backdrop-blur-sm rounded-lg border-white/10'
-                )}
-                label="Staging Area"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-white/70">Staging Area</h3>
-                  {stagedCards.length > 0 && (
-                    <button
-                      onClick={handleClearStagedCards}
-                      className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                
-                <div className="flex gap-2">
-                  {stagedCards.map((card, index) => (
-                    <DraggableCard
-                      key={`staged-${card.id}`}
-                      card={card}
-                      id={`staging-${card.id}`}
-                      disabled={false}
-                      size="md"
-                    />
-                  ))}
-                  {stagedCards.length === 0 && (
-                    <div className="text-gray-400 text-sm">
-                      Drag cards here - Number cards auto-play after 500ms, action cards wait for selection
-                    </div>
-                  )}
-                </div>
-              </DroppableArea>
-              
               {/* Player Hand Area - Using DroppableArea */}
               <DroppableArea
                 id="hand"
@@ -889,7 +889,7 @@ export function NewGameBoard() {
                         <h3 className="text-lg font-medium text-white">Your Hand</h3>
                         {isMyTurn && (
                           <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
-                            Your Turn! Drag cards to staging area
+                            Your Turn! Drag cards to the play area above
                           </span>
                         )}
                       </div>
@@ -1085,6 +1085,9 @@ function PlayerCard({
         )}
       </div>
       <div className="text-xs space-y-1">
+        <div className="flex items-center gap-1">
+          <span className="text-gray-300">🃏 {player.hand?.length || 0} cards</span>
+        </div>
         <div className="flex items-center gap-1">
           <Crown className="h-3 w-3 text-purple-300" />
           <span className="text-purple-200">{player.queens?.length || 0} queens</span>

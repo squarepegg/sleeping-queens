@@ -11,6 +11,7 @@ import {PlayDiscardCommand} from '../commands/PlayDiscardCommand';
 import {TurnManager} from '@/domain/services/TurnManager';
 import {WinConditions} from '@/domain/rules/WinConditions';
 import {debugLogger as testDebugLogger} from '@/infrastructure/logging/DebugLogger';
+import {validateMathEquation} from '@/lib/utils/mathValidator';
 
 export class GameOrchestrator {
   constructor(
@@ -128,6 +129,9 @@ export class GameOrchestrator {
       case 'stage_cards':
         // Create staging command
         return this.createStagingCommand(state, move);
+      case 'clear_staged':
+        // Create clear staged command
+        return this.createClearStagedCommand(state, move);
       case 'allow_knight_attack':
         // Create command to complete knight attack
         return this.createAllowKnightCommand(state, move);
@@ -313,6 +317,14 @@ export class GameOrchestrator {
           score: newQueens.reduce((sum, q) => sum + q.points, 0)
         };
 
+        // Build equation string for message using the validator
+        const values = cards.map((c: any) => c.value || 0);
+        const mathResult = validateMathEquation(values);
+        const equationStr = mathResult.isValid && mathResult.equation ?
+          mathResult.equation :
+          values.join(' ');
+        const queenAwakened = newQueens.length > player.queens.length;
+
         // Create new state (don't advance turn - orchestrator handles that)
         return {
           ...state,
@@ -320,6 +332,15 @@ export class GameOrchestrator {
           deck: newDeck,
           discardPile: newDiscardPile,
           sleepingQueens: newSleepingQueens,
+          lastAction: {
+            playerId: move.playerId,
+            playerName: player.name,
+            actionType: 'play_math',
+            cards: cards,
+            drawnCount: cards.length,
+            message: `${player.name} played equation ${equationStr}${queenAwakened ? ' and woke a queen!' : ''}`,
+            timestamp: Date.now()
+          },
           updatedAt: Date.now()
         };
       }
@@ -336,8 +357,36 @@ export class GameOrchestrator {
       },
       canExecute: function() { return this.validate().isValid; },
       execute: () => {
+        const player = state.players.find(p => p.id === move.playerId);
         const cards = move.cards || [];
         const currentStagedCards = state.stagedCards || {};
+
+        // Determine action message based on card type
+        let message = '';
+        if (cards.length > 0) {
+          const cardType = cards[0].type;
+          if (cardType === 'king') {
+            message = `${player?.name} played a King - selecting a queen to wake...`;
+          } else if (cardType === 'knight') {
+            message = `${player?.name} played a Knight - selecting a queen to steal...`;
+          } else if (cardType === 'potion') {
+            message = `${player?.name} played a Sleeping Potion - selecting a queen to put to sleep...`;
+          }
+        }
+
+        // Create the last action for visibility
+        const lastAction = message ? {
+          playerId: move.playerId,
+          playerName: player?.name || 'Unknown',
+          actionType: cards[0]?.type === 'king' ? 'play_king' :
+                     cards[0]?.type === 'knight' ? 'play_knight' :
+                     'play_potion',
+          cards: cards,
+          message: message,
+          timestamp: Date.now()
+        } : state.lastAction;
+
+        console.log('[GameOrchestrator] Staging cards with lastAction:', lastAction);
 
         // Replace staged cards instead of appending
         // Only one action card should be staged at a time
@@ -346,7 +395,29 @@ export class GameOrchestrator {
           stagedCards: {
             ...currentStagedCards,
             [move.playerId]: cards  // Replace, don't append
-          }
+          },
+          lastAction
+        };
+      }
+    };
+  }
+
+  private createClearStagedCommand(state: GameState, move: GameMove): Command<GameState> {
+    return {
+      validate: () => {
+        const player = state.players.find(p => p.id === move.playerId);
+        if (!player) return { isValid: false, error: 'Player not found' };
+        return { isValid: true };
+      },
+      canExecute: function() { return this.validate().isValid; },
+      execute: () => {
+        const currentStagedCards = state.stagedCards || {};
+        const newStagedCards = { ...currentStagedCards };
+        delete newStagedCards[move.playerId];
+
+        return {
+          ...state,
+          stagedCards: newStagedCards
         };
       }
     };

@@ -1,7 +1,7 @@
 import {GameEngineAdapter} from '../../application/adapters/GameEngineAdapter';
 import {GameMove} from '../../domain/models/GameMove';
 import {Card, Queen} from '../../domain/models/Card';
-import {GAME_CONFIG} from '../factories/CardFactory';
+import {GAME_CONFIG, QUEENS, ACTION_CARDS, NUMBER_CARDS} from '../factories/CardFactory';
 
 describe('Rules Compliance Tests', () => {
   let game: GameEngineAdapter;
@@ -483,14 +483,10 @@ describe('Rules Compliance Tests', () => {
 
   describe('Card Distribution', () => {
     it('should have exactly 12 queens', () => {
-      // Import from the correct location in domain layer
-      const { QUEENS } = require('../factories/CardFactory');
       expect(QUEENS.length).toBe(12);
     });
 
     it('should have correct number of each action card', () => {
-      // Import the ACTION_CARDS directly
-      const { ACTION_CARDS } = require('../factories/CardFactory');
 
       const kings = ACTION_CARDS.filter((c: Card) => c.type === 'king');
       const knights = ACTION_CARDS.filter((c: Card) => c.type === 'knight');
@@ -508,8 +504,6 @@ describe('Rules Compliance Tests', () => {
     });
 
     it('should have 4 of each number 1-10', () => {
-      // Import the NUMBER_CARDS directly
-      const { NUMBER_CARDS } = require('../factories/CardFactory');
 
       for (let value = 1; value <= 10; value++) {
         const cards = NUMBER_CARDS.filter((c: Card) => (c as any).value === value);

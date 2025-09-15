@@ -8,6 +8,7 @@ import {gameApiService} from '@/services/GameApiService';
 import {realtimeService} from '@/services/RealtimeService';
 import {useAuth} from '../hooks/useAuth';
 import {retryWithBackoff} from '../utils/supabase-helpers';
+import {filterGameStateForPlayer} from '../utils/gameStateFilter';
 
 // ============================================
 // Types - Simplified
@@ -126,17 +127,26 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
     // Handle game state updates from realtime service
     const handleGameStateUpdate = useCallback((gameState: GameState) => {
         console.log('[GameContext] Received game state update from realtime');
-        
-        // Update the game engine's state
+        console.log('[GameContext] lastAction in received state:', gameState.lastAction);
+
+        // Filter the game state for the current player to preserve hand privacy
+        // but maintain hand count for other players
+        const filteredState = user?.id
+            ? filterGameStateForPlayer(gameState, user.id)
+            : gameState;
+
+        console.log('[GameContext] lastAction after filtering:', filteredState.lastAction);
+
+        // Update the game engine's state with the filtered state
         if (gameEngineRef.current) {
-            gameEngineRef.current.setState(gameState);
+            gameEngineRef.current.setState(filteredState);
         } else {
             // If no engine exists yet, create one with the new state
-            gameEngineRef.current = new SleepingQueensGame(gameState);
+            gameEngineRef.current = new SleepingQueensGame(filteredState);
         }
-        
-        dispatch({ type: 'SET_GAME_STATE', gameState });
-    }, []);
+
+        dispatch({ type: 'SET_GAME_STATE', gameState: filteredState });
+    }, [user?.id]);
 
     // Handle connection status changes
     const handleConnectionChange = useCallback((status: GameContextState['connectionStatus']) => {

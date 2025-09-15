@@ -118,12 +118,12 @@ export default async function handler(
       const subscribed = await subscribeWithTimeout(broadcastChannel, 3000);
       
       if (subscribed) {
-        // Broadcast the game state update
+        // Broadcast the updated game state (with version and lastAction)
         const result = await broadcastChannel.send({
           type: 'broadcast',
           event: 'game_update',
-          payload: { 
-            gameState: newGameState,
+          payload: {
+            gameState: updatedGameState,
             movePlayerId: move.playerId,
             moveType: move.type,
             timestamp: Date.now()
@@ -148,7 +148,7 @@ export default async function handler(
 
     res.status(200).json({
       isValid: true,
-      gameState: newGameState,
+      gameState: updatedGameState,
     });
   } catch (error) {
     console.error('Move execution error:', error);

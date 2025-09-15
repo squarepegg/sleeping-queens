@@ -254,10 +254,10 @@ export function GameLobby() {
                         <ul className="space-y-1">
                             <li>🟣 <strong>Queens:</strong> Collect to win points</li>
                             <li>👑 <strong>Kings:</strong> Wake up sleeping queens</li>
-                            <li>⚔️ <strong>Knights:</strong> Steal opponents' queens</li>
+                            <li>⚔️ <strong>Knights:</strong> Steal opponents&#39; queens</li>
                             <li>🐉 <strong>Dragons:</strong> Block knight attacks</li>
-                            <li>🪄 <strong>Wands:</strong> Put queens back to sleep</li>
-                            <li>🧪 <strong>Potions:</strong> Put your own queens to sleep</li>
+                            <li>🧪 <strong>Potions:</strong> Put opponents&#39; queens to sleep</li>
+                            <li>🪄 <strong>Wands:</strong> Block potion attacks</li>
                             <li>🔢 <strong>Numbers:</strong> Make math equations</li>
                         </ul>
                     </div>

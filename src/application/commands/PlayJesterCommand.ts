@@ -192,6 +192,16 @@ export class PlayJesterCommand implements Command<GameState> {
       };
     }
 
+    // Check for Rose Queen bonus
+    let roseQueenBonus = undefined;
+    if (queen.name === 'Rose Queen') {
+      roseQueenBonus = {
+        playerId: targetPlayerId,
+        pending: true,
+        timestamp: Date.now()
+      };
+    }
+
     // Clear jester reveal and return (orchestrator handles turn advancement)
     return {
       ...this.state,
@@ -200,6 +210,7 @@ export class PlayJesterCommand implements Command<GameState> {
       deck: newDeck,
       discardPile: newDiscardPile,
       jesterReveal: undefined,
+      roseQueenBonus,
       updatedAt: Date.now()
     };
   }

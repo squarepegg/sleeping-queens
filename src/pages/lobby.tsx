@@ -170,10 +170,10 @@ export default function Lobby() {
                 <h3 className="font-semibold text-white mb-2">🃏 Card Types</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li><strong>Kings:</strong> Wake up sleeping queens</li>
-                  <li><strong>Knights:</strong> Steal opponents' queens</li>
+                  <li><strong>Knights:</strong> Steal opponents&#39; queens</li>
                   <li><strong>Dragons:</strong> Block knight attacks</li>
-                  <li><strong>Wands:</strong> Put queens back to sleep</li>
-                  <li><strong>Potions:</strong> Put your own queens to sleep</li>
+                  <li><strong>Potions:</strong> Put opponents&#39; queens to sleep</li>
+                  <li><strong>Wands:</strong> Block potion attacks</li>
                   <li><strong>Numbers:</strong> Create math equations to draw cards</li>
                 </ul>
               </div>

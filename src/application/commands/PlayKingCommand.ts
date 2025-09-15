@@ -123,6 +123,14 @@ export class PlayKingCommand implements Command<GameState> {
       discardPile: newDiscardPile,
       stagedCards: newStagedCards,
       roseQueenBonus,
+      lastAction: {
+        playerId: this.move.playerId,
+        playerName: this.state.players.find(p => p.id === this.move.playerId)?.name || 'Unknown',
+        actionType: 'play_king',
+        cards: [newDiscardPile[newDiscardPile.length - 1]], // The king card just discarded
+        message: `${this.state.players.find(p => p.id === this.move.playerId)?.name} woke ${targetQueen.name} with a King!`,
+        timestamp: Date.now()
+      },
       updatedAt: Date.now(),
       version: this.state.version + 1
     };

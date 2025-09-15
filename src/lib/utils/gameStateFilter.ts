@@ -9,13 +9,21 @@ export function filterGameStateForPlayer(gameState: GameState, playerId: string)
   // Create a deep copy of the game state
   const filteredState = JSON.parse(JSON.stringify(gameState));
   
-  // Hide other players' hands
+  // Hide other players' hands but preserve the count
   filteredState.players = filteredState.players.map((player: Player) => {
     if (player.id !== playerId) {
-      // Hide the hand of other players
+      // Hide the actual cards but preserve the hand count
+      // Create placeholder cards to maintain the count
+      const handCount = player.hand?.length || 0;
+      const placeholderHand = Array(handCount).fill(null).map((_, index) => ({
+        id: `hidden-${player.id}-${index}`,
+        type: 'hidden',
+        name: 'Hidden Card'
+      }));
+
       return {
         ...player,
-        hand: [] // Empty array to hide cards but maintain structure
+        hand: placeholderHand // Placeholder cards to maintain count
       };
     }
     return player;

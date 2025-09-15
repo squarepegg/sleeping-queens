@@ -191,6 +191,14 @@ export class PlayKnightCommand implements Command<GameState> {
         deck: newDeck,
         discardPile: newDiscardPile,
         stagedCards: clearedStagedCards,
+        lastAction: {
+          playerId: this.move.playerId,
+          playerName: attacker.name,
+          actionType: 'play_knight',
+          cards: [knightCard],
+          message: `${attacker.name} used Knight to steal ${targetQueen.name} from ${targetPlayer?.name}!`,
+          timestamp: Date.now()
+        },
         updatedAt: Date.now(),
         version: this.state.version + 1
       };

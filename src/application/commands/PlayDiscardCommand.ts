@@ -88,6 +88,16 @@ export class PlayDiscardCommand implements Command<GameState> {
       ? { ...this.state.roseQueenBonus, pending: false }
       : this.state.roseQueenBonus;
 
+    // Create action message for all players to see
+    let message = '';
+    if (cards.length === 1) {
+      message = `discarded a ${cards[0].name}`;
+    } else if (cards.length === 2) {
+      message = `discarded a pair of ${(cards[0] as any).value}s`;
+    } else {
+      message = `discarded ${cards.length} cards`;
+    }
+
     // Return new state (orchestrator will handle turn advancement)
     return {
       ...this.state,
@@ -95,6 +105,15 @@ export class PlayDiscardCommand implements Command<GameState> {
       deck: newDeck,
       discardPile: newDiscardPile,
       roseQueenBonus,
+      lastAction: {
+        playerId: this.move.playerId,
+        playerName: player.name,
+        actionType: 'discard',
+        cards: cards,
+        drawnCount: cards.length,
+        message: `${player.name} ${message} and drew ${cards.length} new card${cards.length > 1 ? 's' : ''}`,
+        timestamp: Date.now()
+      },
       updatedAt: Date.now()
     };
   }
