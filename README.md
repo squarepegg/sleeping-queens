@@ -107,46 +107,66 @@ Be the first player to:
 ```
 sleeping-queens/
 ├── src/
-│   ├── components/          # React components
-│   │   ├── game/           # Game-specific components
-│   │   ├── lobby/          # Lobby and room components
-│   │   └── ui/             # Reusable UI components
-│   ├── game/               # Game engine (pure TypeScript)
-│   │   ├── types.ts        # Game type definitions
-│   │   ├── cards.ts        # Card definitions and deck creation
-│   │   ├── game.ts         # Core game logic class
-│   │   └── utils.ts        # Game utility functions
+│   ├── domain/              # Core business logic (Clean Architecture)
+│   │   ├── models/         # Domain entities (GameState, Player, Card)
+│   │   ├── rules/          # Game rules and validation
+│   │   ├── services/       # Domain services (TurnManager, etc.)
+│   │   ├── events/         # Domain events
+│   │   └── factories/      # Card and game factories
+│   ├── application/        # Application layer
+│   │   ├── commands/       # Command pattern implementations
+│   │   ├── services/       # Game orchestration
+│   │   ├── adapters/       # Adapters for domain
+│   │   └── ports/          # Interface definitions
+│   ├── infrastructure/     # External concerns
+│   │   ├── persistence/    # Data storage
+│   │   ├── logging/        # Debug logging
+│   │   └── events/         # Event handling
+│   ├── presentation/       # UI layer
+│   │   └── components/     # React components
+│   │       ├── game/       # Game UI components
+│   │       └── lobby/      # Lobby components
 │   ├── lib/                # Utilities and configurations
-│   │   ├── supabase.ts     # Supabase client setup
-│   │   └── hooks/          # Custom React hooks
+│   │   ├── context/        # React contexts
+│   │   ├── hooks/          # Custom React hooks
+│   │   └── supabase/       # Supabase client setup
 │   ├── pages/              # Next.js pages and API routes
 │   │   ├── api/            # Backend API endpoints
 │   │   ├── game/           # Game pages
 │   │   ├── index.tsx       # Landing page
 │   │   └── lobby.tsx       # Game lobby
+│   ├── services/           # Application services
 │   └── styles/             # Global styles and Tailwind
+├── .claude/                # Architecture documentation
 ├── supabase/               # Database migrations and seeds
 └── public/                 # Static assets
 ```
 
 ## 🔧 Technical Architecture
 
+### Clean Architecture
+- **Domain Layer**: Pure business logic with no external dependencies
+- **Application Layer**: Use cases and orchestration with command pattern
+- **Infrastructure Layer**: Database, logging, and external services
+- **Presentation Layer**: React components and UI logic
+
 ### Game Engine
-- **Pure TypeScript**: Game logic separated from UI for testability
-- **Immutable state**: Game state changes through controlled mutations
-- **Move validation**: Comprehensive validation before state changes
-- **Event system**: Reactive game events for UI updates
+- **Pure TypeScript**: Domain logic completely separated from UI
+- **Immutable state**: All state changes return new state objects
+- **Command Pattern**: Each move type has its own command class
+- **Move validation**: Comprehensive validation in domain rules
+- **Event-driven**: Domain events for game state changes
 
 ### Real-time System
 - **Supabase Realtime**: WebSocket connections for instant updates
-- **Broadcast events**: Custom game events (moves, joins, leaves)
-- **Database triggers**: Automatic state synchronization
+- **Server-side broadcasting**: Only server broadcasts game updates
+- **Client subscriptions**: Clients only receive and react to updates
 - **Optimistic updates**: Immediate UI feedback with rollback on errors
 
 ### State Management
-- **React hooks**: Custom hooks for game and auth state
-- **Local state**: React state for UI interactions
-- **Persistent storage**: Supabase for game state and history
+- **React Context**: GameStateContext manages all game state
+- **Custom hooks**: useAuth, useGameState for component access
+- **Server authority**: Server is single source of truth
 - **Session management**: Simple username-based authentication
 
 ## 🎨 Styling & Design
@@ -202,19 +222,19 @@ sleeping-queens/
 
 ## 🧪 Testing
 
-We maintain comprehensive test coverage for game logic, components, and user interactions:
+We maintain comprehensive test coverage across all architectural layers:
 
 ```bash
-# Run all tests
+# Run all tests (25 test suites, 210+ tests)
 npm test
 
 # Run tests in watch mode (development)
 npm run test:watch
 
-# Generate coverage report
-npm run test:coverage
+# Run specific test file
+npm test src/domain/__tests__/cards.test.ts
 
-# Type checking
+# Type checking (Note: Some presentation layer types may need attention)
 npm run type-check
 
 # Linting
@@ -225,9 +245,16 @@ npm run build
 ```
 
 ### Test Coverage
-- **Game Engine**: 90%+ coverage of core game logic and rules
-- **Components**: 80%+ coverage of UI interactions and accessibility
-- **Utilities**: 90%+ coverage of helper functions and validators
+- **Domain Layer**: Complete coverage of game rules and validation
+- **Application Layer**: Command execution and orchestration tests
+- **Integration Tests**: Full game flow and multiplayer scenarios
+- **Component Tests**: UI interactions and accessibility
+
+### Test Categories
+- **Unit Tests**: Domain models, rules, and services
+- **Integration Tests**: Full game workflows and state transitions
+- **Component Tests**: React component rendering and interactions
+- **Architecture Tests**: Clean architecture compliance verification
 
 See [TESTING.md](TESTING.md) for detailed testing documentation.
 

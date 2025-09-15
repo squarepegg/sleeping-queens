@@ -4,73 +4,84 @@ This document outlines the comprehensive testing strategy for the Sleeping Queen
 
 ## 📋 Testing Overview
 
-Our test suite covers:
-- **Game Engine Logic**: Core game rules, move validation, state management
-- **Card System**: Card types, deck creation, math equations
-- **Utility Functions**: Scoring, win conditions, player management
-- **React Components**: UI components, interactions, accessibility
-- **Integration**: End-to-end game scenarios
+Our test suite follows Clean Architecture principles with 25 test suites and 210+ tests:
+- **Domain Layer**: Pure business logic, game rules, validation (no dependencies)
+- **Application Layer**: Command execution, orchestration, use cases
+- **Infrastructure Layer**: Persistence, logging, external services
+- **Presentation Layer**: React components, UI interactions
+- **Integration Tests**: Full game workflows, multiplayer scenarios
+- **Architecture Compliance**: Clean architecture validation
 
 ## 🚀 Running Tests
 
 ### Basic Commands
 
 ```bash
-# Run all tests
+# Run all tests (25 test suites, 210+ tests)
 npm test
 
 # Run tests in watch mode (great for development)
 npm run test:watch
 
-# Run tests with coverage report
-npm run test:coverage
-
 # Run specific test file
-npm test -- cards.test.ts
+npm test src/domain/__tests__/cards.test.ts
 
 # Run tests matching pattern
 npm test -- --testNamePattern="king move"
 
-# Run tests verbosely
-npm test -- --verbose
+# Run tests for a specific layer
+npm test src/domain
+npm test src/application
+npm test src/infrastructure
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
 ```
 
 ### Coverage Reports
 
 After running `npm run test:coverage`, open `coverage/lcov-report/index.html` in your browser to see detailed coverage reports.
 
-## 🎮 Game Engine Tests
+## 🎮 Test Categories by Layer
 
-### Core Game Logic (`src/game/__tests__/game.test.ts`)
+### Domain Layer Tests (`src/domain/__tests__/`)
 
-Tests the main `SleepingQueensGame` class:
+Pure business logic with no external dependencies:
 
-- **Game Initialization**: Default state, custom configuration
-- **Player Management**: Adding/removing players, turn management
-- **Game Start**: Minimum players, dealing cards
-- **Move Execution**: All card types and actions
-- **Win Conditions**: Queen count and point thresholds
-- **Edge Cases**: Empty deck, disconnections
+- **Card Tests**: Card factories, queen creation, deck integrity
+- **Game Rules**: All move validations, special card effects
+- **Dragon Blocking**: Knight defense mechanics
+- **Named Kings**: Special king card behaviors
+- **Turn Management**: Player turn logic, special situations
 
-### Card System (`src/game/__tests__/cards.test.ts`)
+### Application Layer Tests (`src/application/__tests__/`)
 
-Tests card definitions and deck management:
+Command execution and orchestration:
 
-- **Card Collections**: Correct quantities of each card type
-- **Queen Distribution**: Point values, rarity balance
-- **Deck Operations**: Creation, shuffling, dealing
-- **Math Validation**: Complex equation checking
-- **Utility Functions**: Display names, point calculations
+- **Command Tests**: Each move type command validation and execution
+- **GameOrchestrator**: Move coordination, state transitions
+- **GameEngineAdapter**: Adapter pattern implementation
 
-### Game Utils (`src/game/__tests__/utils.test.ts`)
+### Integration Tests (`src/__tests__/`)
 
-Tests helper functions and validators:
+Full workflow testing:
 
-- **ID Generation**: Unique room codes, player IDs
-- **Score Calculation**: Player points, win detection
-- **Move Validation**: All card actions, error handling
-- **Math Equations**: Finding valid combinations
-- **State Management**: Player turns, game phases
+- **Architecture Compliance**: Clean architecture rules validation
+- **Full Integration**: Complete game scenarios
+- **User Workflows**: Real multiplayer game flows
+
+### Game-Specific Tests (`src/game/__tests__/`)
+
+Specialized game scenarios:
+
+- **Jester Mechanics**: Jester card reveal and queen selection
+- **Rose Queen Bonus**: Bonus queen selection after Rose Queen
+- **Potion/Wand Blocking**: Defense mechanics
+- **Hand Management**: Card drawing and discarding
+- **Special Actions**: Complex card interactions
 
 ## 🎨 Component Tests
 
@@ -96,14 +107,15 @@ Tests the central queen selection area:
 
 ## 📊 Test Coverage Goals
 
-We maintain high test coverage across all critical areas:
+We maintain high test coverage across all architectural layers:
 
-| Component | Target Coverage | Focus Areas |
+| Layer | Target Coverage | Focus Areas |
 |-----------|----------------|-------------|
-| Game Engine | 90%+ | Rules enforcement, state consistency |
-| Card System | 85%+ | Math validation, deck integrity |
-| Components | 80%+ | User interactions, accessibility |
-| Utilities | 90%+ | Edge cases, error handling |
+| Domain | 95%+ | Business rules, validation, state transitions |
+| Application | 90%+ | Command execution, orchestration |
+| Infrastructure | 85%+ | External integrations, persistence |
+| Presentation | 80%+ | User interactions, accessibility |
+| Integration | Complete flows | End-to-end scenarios, multiplayer |
 
 ## 🔧 Testing Best Practices
 
@@ -115,35 +127,43 @@ We maintain high test coverage across all critical areas:
 4. **Mock External Dependencies**: Use mocks for complex dependencies
 5. **Test Edge Cases**: Include boundary conditions and error scenarios
 
-### Example Test Structure
+### Example Test Structure (Clean Architecture)
 
 ```typescript
-describe('SleepingQueensGame', () => {
-  describe('King Moves', () => {
-    test('should successfully wake sleeping queen with king', () => {
-      // Arrange
-      const game = new SleepingQueensGame();
-      game.addPlayer({ id: 'player1', name: 'Test Player', isConnected: true });
-      game.startGame();
-      
-      const state = game.getState();
-      const player = state.players[0];
-      player.hand.push({ id: 'king1', type: 'king', name: 'King' });
-      
-      // Act
-      const result = game.playMove({
-        type: 'play_king',
-        playerId: player.id,
-        cards: [player.hand[0]],
-        targetCard: state.sleepingQueens[0],
-        timestamp: Date.now()
-      });
-      
-      // Assert
-      expect(result.isValid).toBe(true);
-      expect(player.queens).toHaveLength(1);
-      expect(state.sleepingQueens).toHaveLength(11);
-    });
+// Domain layer test - pure logic, no dependencies
+describe('KingRules', () => {
+  test('should validate king can wake sleeping queen', () => {
+    // Arrange
+    const state = createInitialGameState();
+    const move: GameMove = {
+      type: 'play_king',
+      playerId: 'player1',
+      cards: [{ id: 'king1', type: 'king', name: 'King' }],
+      targetCard: state.sleepingQueens[0],
+      timestamp: Date.now()
+    };
+
+    // Act
+    const validation = KingRules.validate(state, move);
+
+    // Assert
+    expect(validation.isValid).toBe(true);
+  });
+});
+
+// Application layer test - command execution
+describe('PlayKingCommand', () => {
+  test('should execute king move successfully', () => {
+    // Arrange
+    const state = createTestGameState();
+    const command = new PlayKingCommand(state, kingMove);
+
+    // Act
+    const newState = command.execute();
+
+    // Assert
+    expect(newState.players[0].queens).toHaveLength(1);
+    expect(newState.sleepingQueens).toHaveLength(11);
   });
 });
 ```
