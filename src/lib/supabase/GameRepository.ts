@@ -123,8 +123,7 @@ export class GameRepository {
         return false;
       }
 
-      // Broadcast the update to all subscribed clients
-      await this.broadcastGameUpdate(gameId, newState);
+      // Note: Broadcasting is handled by the server API endpoints, not here
 
       return true;
     } catch (error) {
@@ -201,25 +200,7 @@ export class GameRepository {
     }
   }
 
-  /**
-   * Broadcast game update to all connected clients
-   */
-  private async broadcastGameUpdate(gameId: string, gameState: GameState): Promise<void> {
-    try {
-      const channel = supabase.channel(`game-broadcast-${gameId}`);
-      
-      await channel.send({
-        type: 'broadcast',
-        event: 'game_update',
-        payload: { gameState }
-      });
-
-      // Clean up the broadcast channel
-      await supabase.removeChannel(channel);
-    } catch (error) {
-      console.error('Error broadcasting game update:', error);
-    }
-  }
+  // Removed broadcastGameUpdate - broadcasting is handled by server API endpoints only
 
   /**
    * Get all active games (for lobby)

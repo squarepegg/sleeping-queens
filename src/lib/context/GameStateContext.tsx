@@ -219,11 +219,11 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
 
         const optimisticState = optimisticEngine.getState();
 
-        // Apply optimistically to UI
+        // Apply optimistically to UI (only for this client)
         dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState });
 
-        // Broadcast optimistic update to other players
-        await realtimeService.broadcastGameUpdate(currentGameId.current, optimisticState);
+        // Don't broadcast from client - server will handle broadcasting
+        // This ensures single source of truth and prevents race conditions
 
         try {
             // Submit move to server with retry logic
@@ -344,14 +344,12 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
                 // startGame() returns void but throws if there's an error
                 gameEngineRef.current.startGame();
                 
-                // Get updated state and broadcast it
+                // Get updated state
                 const updatedState = gameEngineRef.current.getState();
                 dispatch({ type: 'SET_GAME_STATE', gameState: updatedState });
-                
-                // Broadcast the game start to all players
-                await realtimeService.broadcastGameUpdate(currentGameId.current, updatedState);
-                
-                // Also update in database
+
+                // Server will broadcast the game start to all players
+                // Update in database
                 try {
                     const response = await fetch(`/api/games/${currentGameId.current}/update-state`, {
                         method: 'POST',
@@ -501,11 +499,9 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
                 // Update local state
                 const updatedState = gameEngineRef.current.getState();
                 dispatch({ type: 'SET_GAME_STATE', gameState: updatedState });
-                
-                // Broadcast the update
-                await realtimeService.broadcastGameUpdate(currentGameId.current, updatedState);
-                
-                // Also update database
+
+                // Server will broadcast the update
+                // Update database
                 try {
                     await fetch(`/api/games/${currentGameId.current}/update-state`, {
                         method: 'POST',

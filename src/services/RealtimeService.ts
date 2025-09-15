@@ -87,10 +87,13 @@ export class RealtimeService {
    * Broadcast game state update to all subscribers
    */
   async broadcastGameUpdate(gameId: string, gameState: GameState): Promise<boolean> {
-    const channel = this.channels.get(gameId);
+    // Try to use existing channel first
+    let channel = this.channels.get(gameId);
+
+    // If no existing channel, create a temporary one for broadcasting
     if (!channel) {
-      console.error(`[RealtimeService] No active channel for game ${gameId}`);
-      return false;
+      console.log(`[RealtimeService] Creating temporary channel for broadcast to game ${gameId}`);
+      channel = supabase.channel(`direct-game-${gameId}`);
     }
 
     try {
@@ -105,9 +108,25 @@ export class RealtimeService {
       if (!success) {
         console.error('[RealtimeService] Failed to broadcast game update:', result);
       }
+
+      // If we created a temporary channel, clean it up
+      if (!this.channels.has(gameId)) {
+        await channel.unsubscribe();
+      }
+
       return success;
     } catch (error) {
       console.error('[RealtimeService] Error broadcasting game update:', error);
+
+      // Clean up temporary channel on error
+      if (!this.channels.has(gameId)) {
+        try {
+          await channel.unsubscribe();
+        } catch (cleanupError) {
+          console.error('[RealtimeService] Error cleaning up temporary channel:', cleanupError);
+        }
+      }
+
       return false;
     }
   }

@@ -140,7 +140,7 @@ export default function Lobby() {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <JoinGame />
+                  <JoinGame isActive={true} />
                 </motion.div>
               )}
             </AnimatePresence>

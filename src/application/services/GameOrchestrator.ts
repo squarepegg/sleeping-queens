@@ -77,8 +77,11 @@ export class GameOrchestrator {
                                      (move.targetCard || move.targetQueenId) &&
                                      state.jesterReveal?.waitingForQueenSelection;
 
+      // Defense moves (dragon/wand) handle their own turn advancement
+      const isDefenseMove = move.type === 'play_dragon' || move.type === 'play_wand';
+
       const isSpecial = this.isSpecialAction(move, newState);
-      if (!isSpecial && !keepTurn || wasJesterQueenSelection) {
+      if (!isDefenseMove && !isSpecial && !keepTurn || wasJesterQueenSelection) {
         newState = TurnManager.advanceTurn(newState);
       }
 
@@ -121,7 +124,7 @@ export class GameOrchestrator {
       case 'play_equation':
         // Create math command
         return this.createMathCommand(state, move);
-      case 'stage_card':
+      case 'stage_cards':
         // Create staging command
         return this.createStagingCommand(state, move);
       case 'allow_knight_attack':
@@ -230,7 +233,11 @@ export class GameOrchestrator {
 
         newState.updatedAt = Date.now();
         newState.version = state.version + 1;
-        return TurnManager.advanceTurn(newState);
+
+        // After a successful defense, advance turn normally
+        // The defender gets their regular turn if they're next
+        const nextState = TurnManager.advanceTurn(newState);
+        return nextState;
       }
     };
   }
@@ -488,7 +495,7 @@ export class GameOrchestrator {
     }
 
     // Check if staging a card that requires follow-up action
-    if (move.type === 'stage_card') {
+    if (move.type === 'stage_cards') {
       // If staging a King, Knight, or Potion, don't advance turn
       // as player needs to select target
       const cards = move.cards || [];

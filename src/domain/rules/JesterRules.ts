@@ -32,7 +32,15 @@ export class JesterRules {
     }
 
     const card = player.hand.find(c => c.id === cardId);
-    if (!card || card.type !== 'jester') {
+    if (!card) {
+      // Log debug info to help diagnose the issue
+      console.log('[JesterRules] Card not found in hand. Looking for:', cardId);
+      console.log('[JesterRules] Player hand IDs:', player.hand.map(c => c.id));
+      console.log('[JesterRules] Move cards:', move.cards);
+      return { isValid: false, error: `Card ${cardId} not found in player's hand` };
+    }
+    if (card.type !== 'jester') {
+      console.log('[JesterRules] Card type mismatch. Found:', card.type, 'Expected: jester');
       return { isValid: false, error: 'Card is not a jester' };
     }
 

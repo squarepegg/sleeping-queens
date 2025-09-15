@@ -111,8 +111,9 @@ export function NewGameBoard() {
     if (!currentUserId || !isMyTurn || stagedCards.length === 0) return;
     
     // Prevent re-staging if card is already staged in game state (except for jester)
-    if (gameState?.stagedCard && stagedCards.length === 1 &&
-        gameState.stagedCard.cards[0]?.id === stagedCards[0].id &&
+    const serverStagedCards = gameState?.stagedCards?.[currentUserId] || [];
+    if (serverStagedCards.length > 0 && stagedCards.length === 1 &&
+        serverStagedCards[0]?.id === stagedCards[0].id &&
         stagedCards[0].type !== 'jester') {
       console.log('[NewGameBoard] Card already staged, skipping auto-play');
       return;
@@ -178,7 +179,7 @@ export function NewGameBoard() {
       if (stagedCards.length === 1 && ['king', 'knight', 'potion'].includes(stagedCards[0].type)) {
         console.log('[NewGameBoard] Staging action card:', stagedCards[0].type);
         const result = await playMove({
-          type: 'stage_card',
+          type: 'stage_cards',
           playerId: currentUserId,
           cards: stagedCards,
           timestamp: Date.now()
@@ -450,7 +451,7 @@ export function NewGameBoard() {
         // Stage as pair
         if (currentUserId) {
           await playMove({
-            type: 'stage_card',
+            type: 'stage_cards',
             playerId: currentUserId,
             cards: selectedCards,
             timestamp: Date.now()
@@ -462,7 +463,7 @@ export function NewGameBoard() {
     } else if (selectedCards.length >= 3 && allNumbers) {
       // Could be a math equation - stage them
       await playMove({
-        type: 'stage_card',
+        type: 'stage_cards',
         playerId: currentUserId,
         cards: selectedCards,
         timestamp: Date.now()
@@ -472,7 +473,7 @@ export function NewGameBoard() {
     } else if (selectedCards.length === 1) {
       // Single card - stage it
       await playMove({
-        type: 'stage_card',
+        type: 'stage_cards',
         playerId: currentUserId,
         cards: selectedCards,
         timestamp: Date.now()

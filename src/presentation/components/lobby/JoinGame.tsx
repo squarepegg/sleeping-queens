@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {useRouter} from 'next/router';
 import {AlertCircle, Hash, LogIn} from 'lucide-react';
 import {Button} from '../ui/Button';
@@ -6,7 +6,11 @@ import {Card} from '../ui/Card';
 import {GameStateProvider, useGameState} from '@/lib/context/GameStateContext';
 import {useAuth} from '@/lib/hooks/useAuth';
 
-function JoinGameContent() {
+interface JoinGameContentProps {
+    isActive?: boolean;
+}
+
+function JoinGameContent({ isActive = false }: JoinGameContentProps) {
     const router = useRouter();
     const { user } = useAuth();
     const { state, joinGame, clearError } = useGameState();
@@ -52,6 +56,22 @@ function JoinGameContent() {
         setRoomCode(formatted);
     };
 
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        // Focus the input when the component becomes active
+        if (isActive) {
+            // Use a small timeout to ensure the component is fully rendered and animation is complete
+            const timer = setTimeout(() => {
+                if (inputRef.current && !inputRef.current.disabled) {
+                    inputRef.current.focus();
+                }
+            }, 350); // Match the motion animation duration
+
+            return () => clearTimeout(timer);
+        }
+    }, [isActive, user, state.loading]);
+
     return (
         <Card variant="glass" className="w-full max-w-md mx-auto">
             <div className="text-center mb-6">
@@ -69,6 +89,7 @@ function JoinGameContent() {
                         Room Code
                     </label>
                     <input
+                        ref={inputRef}
                         id="roomCode"
                         type="text"
                         value={roomCode}
@@ -152,10 +173,14 @@ function JoinGameContent() {
     );
 }
 
-export function JoinGame() {
+interface JoinGameProps {
+    isActive?: boolean;
+}
+
+export function JoinGame({ isActive = false }: JoinGameProps) {
     return (
         <GameStateProvider>
-            <JoinGameContent />
+            <JoinGameContent isActive={isActive} />
         </GameStateProvider>
     );
 }

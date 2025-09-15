@@ -21,7 +21,7 @@ describe('Potion Queen Selection UI Fix', () => {
     
     // Try to play a potion - this will fail if Alice doesn't have one
     const potionMove: GameMove = {
-      type: 'stage_card',
+      type: 'stage_cards',
       playerId: 'alice',
       cards: [], // We don't know what cards Alice has
       timestamp: Date.now(),

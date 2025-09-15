@@ -49,7 +49,7 @@ export class MoveFormatter {
         return this.formatDiscardMove(move, playerName);
       
       case 'end_turn':
-      case 'stage_card':
+      case 'stage_cards':
         // Skip these moves - they're not interesting for history
         return null;
       

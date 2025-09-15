@@ -31,12 +31,6 @@ export interface JesterReveal {
   readonly powerCardRevealed?: boolean; // For message generation when power card revealed
 }
 
-export interface StagedCard {
-  readonly cards: ReadonlyArray<Card>;
-  readonly playerId: string;
-  readonly action: string;
-}
-
 export interface GameState {
   readonly id: string;
   readonly players: ReadonlyArray<Player>;
@@ -56,7 +50,7 @@ export interface GameState {
   // Optional state
   readonly lastMoveId?: string;
   readonly lastMoveBy?: string;
-  readonly stagedCard?: StagedCard;
+  // Staged cards for each player (used for actions that need targets)
   readonly stagedCards?: Record<string, ReadonlyArray<Card>>;
   readonly jesterReveal?: JesterReveal;
   readonly pendingKnightAttack?: PendingAttack;
