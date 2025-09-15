@@ -1,23 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Copy, Crown, Users, Play, UserCheck, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { useGameState } from '../../lib/context/GameStateContext';
-import { useAuth } from '../../lib/hooks/useAuth';
-import { GAME_CONFIG } from '../../game/cards';
+import { useGameState } from '@/lib/context/GameStateContextNew';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { GAME_CONFIG } from '@/game/cards';
 
 export function GameLobby() {
     const { user } = useAuth();
-    const { state, isHost, startGame, clearError } = useGameState();
+    const { gameState, loading, connectionStatus, lastError, isHost, clearError, startGame } = useGameState();
     const [copied, setCopied] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
-
-    const gameState = state.gameState;
     
     console.log('[GameLobby] Rendering GameLobby component');
     console.log('[GameLobby] Game state:', gameState ? 'exists' : 'null');
     console.log('[GameLobby] Game phase:', gameState?.phase);
     console.log('[GameLobby] Players count:', gameState?.players?.length);
+    console.log('[GameLobby] User:', user?.username);
+    console.log('[GameLobby] Is host:', isHost);
+    console.log('[GameLobby] First player:', gameState?.players[0]?.name);
 
     const handleCopyRoomCode = async () => {
         if (!gameState?.roomCode) return;
@@ -40,10 +41,9 @@ export function GameLobby() {
         try {
             console.log('[GameLobby] Starting game...');
             const success = await startGame();
-
+            
             if (success) {
                 console.log('[GameLobby] Game started successfully');
-                // The game state will update via realtime, triggering a re-render
             } else {
                 console.error('[GameLobby] Failed to start game');
             }
@@ -61,12 +61,12 @@ export function GameLobby() {
         !isStarting;
 
     // Show loading state
-    if (state.loading || !gameState) {
+    if (loading || !gameState) {
         return (
             <Card variant="glass" className="w-full max-w-2xl mx-auto text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
                 <p className="text-white">Loading game...</p>
-                {state.connectionStatus === 'connecting' && (
+                {connectionStatus === 'connecting' && (
                     <p className="text-gray-400 text-sm mt-2">Establishing connection...</p>
                 )}
             </Card>
@@ -81,15 +81,15 @@ export function GameLobby() {
     return (
         <div className="w-full max-w-4xl mx-auto space-y-6">
             {/* Connection Status Banner */}
-            {state.connectionStatus !== 'connected' && (
+            {connectionStatus !== 'connected' && (
                 <div className={`rounded-lg p-3 flex items-center space-x-2 ${
-                    state.connectionStatus === 'error' ? 'bg-red-500/10 border border-red-500/20' :
+                    connectionStatus === 'error' ? 'bg-red-500/10 border border-red-500/20' :
                         'bg-yellow-500/10 border border-yellow-500/20'
                 }`}>
                     <AlertCircle className="h-4 w-4 text-yellow-400" />
                     <span className="text-sm text-gray-300">
-            {state.connectionStatus === 'error' ? 'Connection lost. Attempting to reconnect...' :
-                state.connectionStatus === 'connecting' ? 'Connecting to game server...' :
+            {connectionStatus === 'error' ? 'Connection lost. Attempting to reconnect...' :
+                connectionStatus === 'connecting' ? 'Connecting to game server...' :
                     'Disconnected from game'}
           </span>
                 </div>
@@ -200,9 +200,9 @@ export function GameLobby() {
                     </div>
                 </div>
 
-                {state.lastError && (
+                {lastError && (
                     <div className="mt-6 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                        <p className="text-red-300 text-sm">{state.lastError}</p>
+                        <p className="text-red-300 text-sm">{lastError}</p>
                         <button
                             onClick={clearError}
                             className="text-red-400 text-xs underline mt-1"

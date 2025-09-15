@@ -1,4 +1,4 @@
-import { SleepingQueensGame } from '../game';
+import { GameEngine as SleepingQueensGame } from '../engine/GameEngine';
 import { GameMove } from '../types';
 
 describe('Discard Pile UI Features', () => {
@@ -6,8 +6,8 @@ describe('Discard Pile UI Features', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 0 });
-    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1 });
+    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     game.startGame();
@@ -20,7 +20,7 @@ describe('Discard Pile UI Features', () => {
     
     // Give Alice specific cards to discard
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
-    const discardCard = { id: 'test-number-7', type: 'number', value: 7, name: '7' };
+    const discardCard = { id: 'test-number-7', type: 'number' as const, value: 7, name: '7' };
     alicePlayer.hand = [discardCard, ...alicePlayer.hand.slice(1)]; // Replace first card
     
     console.log('Alice original hand size:', alicePlayer.hand.length);
@@ -59,8 +59,8 @@ describe('Discard Pile UI Features', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 0 });
-    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1 });
+    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     game.startGame();
@@ -69,7 +69,7 @@ describe('Discard Pile UI Features', () => {
     
     // Discard first card (Alice)
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
-    const firstDiscard = { id: 'first-card', type: 'number', value: 3, name: '3' };
+    const firstDiscard = { id: 'first-card', type: 'number' as const, value: 3, name: '3' };
     alicePlayer.hand[0] = firstDiscard;
     
     const firstDiscardMove: GameMove = {
@@ -84,7 +84,7 @@ describe('Discard Pile UI Features', () => {
     // Discard second card (Bob's turn now)
     const newState = (game as any).getInternalState();
     const bobPlayer = newState.players.find((p: any) => p.id === 'bob');
-    const secondDiscard = { id: 'second-card', type: 'king', name: 'King' };
+    const secondDiscard = { id: 'second-card', type: 'king' as const, name: 'King' };
     bobPlayer.hand[0] = secondDiscard;
     
     const secondDiscardMove: GameMove = {
@@ -124,8 +124,8 @@ describe('Discard Pile UI Features', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 0 });
-    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1 });
+    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     game.startGame();

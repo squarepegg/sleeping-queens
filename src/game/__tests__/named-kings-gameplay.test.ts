@@ -1,4 +1,4 @@
-import { SleepingQueensGame } from '../game';
+import { GameEngine as SleepingQueensGame } from '../engine/GameEngine';
 import { GameMove } from '../types';
 
 describe('Named Kings in Gameplay', () => {
@@ -6,8 +6,8 @@ describe('Named Kings in Gameplay', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 0 });
-    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1 });
+    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     game.startGame();
@@ -19,7 +19,7 @@ describe('Named Kings in Gameplay', () => {
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
     const cookieKing = { 
       id: 'king-3', 
-      type: 'king', 
+      type: 'king' as const, 
       name: 'Cookie King',
       description: 'Wake up a sleeping queen'
     };
@@ -63,8 +63,8 @@ describe('Named Kings in Gameplay', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 0 });
-    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1 });
+    game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'bob', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     game.startGame();
@@ -75,7 +75,7 @@ describe('Named Kings in Gameplay', () => {
     const alicePlayer = state.players.find((p: any) => p.id === 'alice');
     const fireKing = { 
       id: 'king-4', 
-      type: 'king', 
+      type: 'king' as const, 
       name: 'Fire King',
       description: 'Wake up a sleeping queen'
     };
@@ -96,7 +96,7 @@ describe('Named Kings in Gameplay', () => {
     const bobPlayer = newState.players.find((p: any) => p.id === 'bob');
     const turtleKing = { 
       id: 'king-8', 
-      type: 'king', 
+      type: 'king' as const, 
       name: 'Turtle King',
       description: 'Wake up a sleeping queen'
     };

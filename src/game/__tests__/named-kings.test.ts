@@ -44,7 +44,7 @@ describe('Named Kings Feature', () => {
     // Verify all names are different from generic "King"
     kings.forEach(king => {
       expect(king.name).not.toBe('King');
-      expect(king.name.includes('King')).toBe(true); // Should still contain "King"
+      expect(king.name?.includes('King')).toBe(true); // Should still contain "King"
     });
   });
 

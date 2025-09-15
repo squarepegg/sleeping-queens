@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { Users, Settings, Play } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { GameStateProvider, useGameState } from '../../lib/context/GameStateContext';
+import { GameStateProvider, useGameState } from '@/lib/context/GameStateContextNew';
 import { useAuth } from '@/lib/hooks/useAuth';
 
 function CreateGameContent() {

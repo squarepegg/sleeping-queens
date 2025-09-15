@@ -56,7 +56,7 @@ describe('Sleeping Queens Game Utils', () => {
   describe('Player Score Calculation', () => {
     const createQueen = (points: number): Queen => ({
       id: `queen-${points}`,
-      type: 'queen',
+      type: 'queen' as const,
       name: `Queen ${points}`,
       points,
       isAwake: true
@@ -100,6 +100,7 @@ describe('Sleeping Queens Game Utils', () => {
       id: 'test-game',
       players,
       currentPlayerIndex: 0,
+      currentPlayerId: players[0]?.id || null,
       sleepingQueens: [],
       deck: [],
       discardPile: [],
@@ -108,7 +109,8 @@ describe('Sleeping Queens Game Utils', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       roomCode: 'TEST01',
-      maxPlayers: 5
+      maxPlayers: 5,
+      version: 1
     });
 
     test('should detect winner by queen count (2 players)', () => {
@@ -153,11 +155,11 @@ describe('Sleeping Queens Game Utils', () => {
           position: 0,
           hand: [],
           queens: [
-            { id: 'queen1', type: 'queen', name: 'Queen 1', points: 20, isAwake: true },
-            { id: 'queen2', type: 'queen', name: 'Queen 2', points: 25, isAwake: true }
+            { id: 'queen1', type: 'queen' as const, name: 'Queen 1', points: 20, isAwake: true },
+            { id: 'queen2', type: 'queen' as const, name: 'Queen 2', points: 30, isAwake: true }
           ],
           isConnected: true,
-          score: 45
+          score: 50  // Fixed: 3 players need 50 points to win
         },
         {
           id: 'player2',
@@ -193,7 +195,7 @@ describe('Sleeping Queens Game Utils', () => {
           position: 0,
           hand: [],
           queens: [
-            { id: 'queen1', type: 'queen', name: 'Queen 1', points: 10, isAwake: true }
+            { id: 'queen1', type: 'queen' as const, name: 'Queen 1', points: 10, isAwake: true }
           ],
           isConnected: true,
           score: 10
@@ -259,7 +261,9 @@ describe('Sleeping Queens Game Utils', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       roomCode: 'TEST01',
-      maxPlayers: 5
+      maxPlayers: 5,
+      currentPlayerId: null,
+      version: 1
     };
 
     test('should get next player index correctly', () => {
@@ -289,7 +293,7 @@ describe('Sleeping Queens Game Utils', () => {
         id: 'player1',
         name: 'Player 1',
         position: 0,
-        hand: Array(3).fill({ id: 'card', type: 'king', name: 'King' }),
+        hand: Array(3).fill({ id: 'card', type: 'king' as const, name: 'King' }),
         queens: [],
         isConnected: true,
         score: 0
@@ -299,7 +303,7 @@ describe('Sleeping Queens Game Utils', () => {
         id: 'player2',
         name: 'Player 2',
         position: 1,
-        hand: Array(5).fill({ id: 'card', type: 'king', name: 'King' }),
+        hand: Array(5).fill({ id: 'card', type: 'king' as const, name: 'King' }),
         queens: [],
         isConnected: true,
         score: 0
@@ -314,7 +318,7 @@ describe('Sleeping Queens Game Utils', () => {
         id: 'player1',
         name: 'Player 1',
         position: 0,
-        hand: Array(5).fill({ id: 'card', type: 'king', name: 'King' }),
+        hand: Array(5).fill({ id: 'card', type: 'king' as const, name: 'King' }),
         queens: [],
         isConnected: true,
         score: 0
@@ -324,7 +328,7 @@ describe('Sleeping Queens Game Utils', () => {
         id: 'player2',
         name: 'Player 2',
         position: 1,
-        hand: Array(7).fill({ id: 'card', type: 'king', name: 'King' }),
+        hand: Array(7).fill({ id: 'card', type: 'king' as const, name: 'King' }),
         queens: [],
         isConnected: true,
         score: 0
@@ -344,9 +348,9 @@ describe('Sleeping Queens Game Utils', () => {
           name: 'Player 1',
           position: 0,
           hand: [
-            { id: 'king1', type: 'king', name: 'King' },
-            { id: 'knight1', type: 'knight', name: 'Knight' },
-            { id: 'dragon1', type: 'dragon', name: 'Dragon' }
+            { id: 'king1', type: 'king' as const, name: 'King' },
+            { id: 'knight1', type: 'knight' as const, name: 'Knight' },
+            { id: 'dragon1', type: 'dragon' as const, name: 'Dragon' }
           ],
           queens: [],
           isConnected: true,
@@ -358,7 +362,7 @@ describe('Sleeping Queens Game Utils', () => {
           position: 1,
           hand: [],
           queens: [
-            { id: 'queen1', type: 'queen', name: 'Queen 1', points: 10, isAwake: true }
+            { id: 'queen1', type: 'queen' as const, name: 'Queen 1', points: 10, isAwake: true }
           ],
           isConnected: true,
           score: 10
@@ -366,7 +370,7 @@ describe('Sleeping Queens Game Utils', () => {
       ],
       currentPlayerIndex: 0,
       sleepingQueens: [
-        { id: 'sleepingQueen1', type: 'queen', name: 'Sleeping Queen', points: 15, isAwake: false }
+        { id: 'sleepingQueen1', type: 'queen' as const, name: 'Sleeping Queen', points: 15, isAwake: false }
       ],
       deck: [],
       discardPile: [],
@@ -375,7 +379,9 @@ describe('Sleeping Queens Game Utils', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       roomCode: 'TEST01',
-      maxPlayers: 5
+      maxPlayers: 5,
+      currentPlayerId: null,
+      version: 1
     };
 
     test('should validate king move', () => {
@@ -423,7 +429,7 @@ describe('Sleeping Queens Game Utils', () => {
   describe('Math Equation Utilities', () => {
     const createNumberCard = (value: number, id?: string): NumberCard => ({
       id: id || `card-${value}`,
-      type: 'number',
+      type: 'number' as const,
       value,
       name: value.toString()
     });

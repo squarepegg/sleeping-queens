@@ -75,7 +75,7 @@ A magical, fully-featured online implementation of the beloved Sleeping Queens c
    ```
 
 6. **Open your browser**
-   Navigate to `http://localhost:3000`
+   Navigate to `http://localhost:3001`
 
 ## 🎯 How to Play
 

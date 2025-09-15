@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { LogIn, Hash, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { GameStateProvider, useGameState } from '../../lib/context/GameStateContext';
-import { useAuth } from '../../lib/hooks/useAuth';
+import { GameStateProvider, useGameState } from '@/lib/context/GameStateContextNew';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 function JoinGameContent() {
     const router = useRouter();

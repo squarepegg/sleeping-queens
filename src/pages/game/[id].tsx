@@ -4,8 +4,8 @@ import Head from 'next/head';
 import { useAuth } from '../../lib/hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { GameLobby } from '../../components/lobby/GameLobby';
-import { GameStateProvider, useGameState } from '../../lib/context/GameStateContext';
-import { GameBoard } from '../../components/game/GameBoard';
+import { GameStateProvider, useGameState } from '../../lib/context/GameStateContextNew';
+import { NewGameBoard } from '../../components/game/NewGameBoard';
 
 // Component to display game state for debugging
 function GameStateDisplay() {
@@ -90,9 +90,8 @@ function GameContent() {
         console.log('[GameContent] Rendering GameLobby for waiting phase');
         return <GameLobby />;
     } else if (state.gameState.phase === 'playing') {
-        console.log('[GameContent] Rendering GameBoard for playing phase');
-        // Use GameBoard if available, otherwise show game state
-        return <GameBoard />;
+        console.log('[GameContent] Rendering NewGameBoard for playing phase');
+        return <NewGameBoard />;
     } else if (state.gameState.phase === 'ended') {
         return (
             <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">

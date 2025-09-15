@@ -1,7 +1,7 @@
 // GameStateContext.tsx - Using direct subscriptions without useRealtime
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { GameState, Player, GameMove, MoveValidationResult } from '@/game/types';
-import { SleepingQueensGame } from '@/game/game';
+import { GameEngine as SleepingQueensGame } from '@/game/engine/GameEngine';
 import { supabase } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -90,6 +90,16 @@ interface GameStateContextType {
     blockKnightAttack: (playerId: string) => Promise<MoveValidationResult>;
     allowKnightAttack: () => Promise<MoveValidationResult>;
     getRemainingDefenseTime: () => number;
+    
+    // Wand blocking methods
+    canPlayWand: (playerId: string) => boolean;
+    getPendingPotionAttack: () => any;
+    blockPotionAttack: (playerId: string) => Promise<MoveValidationResult>;
+    allowPotionAttack: () => Promise<MoveValidationResult>;
+    getRemainingPotionDefenseTime: () => number;
+    
+    // Jester reveal methods
+    clearJesterReveal: () => Promise<MoveValidationResult>;
 }
 
 const GameStateContext = createContext<GameStateContextType | null>(null);
@@ -145,20 +155,15 @@ export function GameStateProvider({
     // ============================================
 
     const broadcastGameUpdate = useCallback(async (gameState: GameState): Promise<boolean> => {
-        if (!gameId) return false;
+        if (!gameId || !channelRef.current) return false;
 
         try {
-            // Use a temporary channel for broadcasting
-            const broadcastChannel = supabase.channel(`game-broadcast-${gameId}`);
-
-            const result = await broadcastChannel.send({
+            // Use the existing channel that everyone is subscribed to
+            const result = await channelRef.current.send({
                 type: 'broadcast',
                 event: 'game_update',
                 payload: { gameState }
             });
-
-            // Clean up the temporary channel
-            await broadcastChannel.unsubscribe();
 
             console.log('[GameContext] Broadcast result:', result);
             return result === 'ok';
@@ -280,11 +285,19 @@ export function GameStateProvider({
                     ({ payload }) => {
                         if (!mounted) return;
 
-                        console.log('[GameContext] 📡 Broadcast received');
+                        console.log('[GameContext] 📡 Broadcast received from other player:', {
+                            currentPlayer: payload.gameState?.currentPlayerIndex,
+                            players: payload.gameState?.players?.length,
+                            discardPile: payload.gameState?.discardPile?.length,
+                            stagedCards: payload.gameState?.stagedCards?.length,
+                            gameMessage: payload.gameState?.gameMessage
+                        });
                         if (payload?.gameState) {
                             console.log('[GameContext] Broadcast state:', {
                                 players: payload.gameState.players?.length,
-                                phase: payload.gameState.phase
+                                phase: payload.gameState.phase,
+                                currentPlayer: payload.gameState.currentPlayerIndex,
+                                discardPile: payload.gameState.discardPile?.length
                             });
                             // Apply broadcast updates immediately for responsiveness
                             handleGameStateUpdate(payload.gameState, 'broadcast');
@@ -352,6 +365,10 @@ export function GameStateProvider({
         dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState, source: 'broadcast' });
 
         // Broadcast for immediate feedback to other players
+        console.log('[GameContext] 🚀 Broadcasting optimistic state:', {
+            stagedCards: optimisticState.stagedCards?.length,
+            gameMessage: optimisticState.gameMessage
+        });
         await broadcastGameUpdate(optimisticState);
 
         try {
@@ -597,6 +614,9 @@ export function GameStateProvider({
                 name: user.username,
                 position: 0,
                 isConnected: true,
+                hand: [],
+                queens: [],
+                score: 0
             });
 
             const initialState = gameEngine.getState();
@@ -667,7 +687,7 @@ export function GameStateProvider({
             return { isValid: false, error: 'Game not initialized' };
         }
 
-        const result = gameEngineRef.current.blockKnightAttack(playerId);
+        const result = gameEngineRef.current.allowKnightAttack();
         
         if (result.isValid && state.gameState) {
             // Update game state after blocking
@@ -725,6 +745,103 @@ export function GameStateProvider({
     }, []);
 
     // ============================================
+    // Wand blocking methods
+    // ============================================
+
+    const canPlayWand = useCallback((playerId: string): boolean => {
+        if (!gameEngineRef.current) return false;
+        return gameEngineRef.current.canPlayerPlayWand(playerId);
+    }, []);
+
+    const getPendingPotionAttack = useCallback(() => {
+        if (!gameEngineRef.current) return null;
+        return gameEngineRef.current.getPendingPotionAttack();
+    }, []);
+
+    const blockPotionAttack = useCallback(async (playerId: string): Promise<MoveValidationResult> => {
+        if (!gameEngineRef.current) {
+            return { isValid: false, error: 'Game not initialized' };
+        }
+
+        const result = gameEngineRef.current.allowPotionAttack();
+        
+        if (result.isValid && state.gameState) {
+            // Update game state after blocking
+            const newState = gameEngineRef.current.getState();
+            
+            try {
+                const response = await fetch(`/api/games/${state.gameState.id}/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'play_wand',
+                        playerId,
+                        cards: [],
+                        timestamp: Date.now()
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to sync wand block to server');
+                }
+
+                // Update local state
+                dispatch({ type: 'SET_GAME_STATE', gameState: newState, source: 'local' });
+            } catch (error) {
+                console.error('Error syncing wand block:', error);
+            }
+        }
+
+        return result;
+    }, [state.gameState]);
+
+    const allowPotionAttack = useCallback(async (): Promise<MoveValidationResult> => {
+        if (!gameEngineRef.current) {
+            return { isValid: false, error: 'Game not initialized' };
+        }
+
+        const result = gameEngineRef.current.allowPotionAttack();
+        
+        if (result.isValid && state.gameState) {
+            // Update game state after allowing attack
+            const newState = gameEngineRef.current.getState();
+            
+            // Update local state
+            dispatch({ type: 'SET_GAME_STATE', gameState: newState, source: 'local' });
+        }
+
+        return result;
+    }, [state.gameState]);
+
+    const clearJesterReveal = useCallback(async (): Promise<MoveValidationResult> => {
+        if (!gameEngineRef.current) {
+            return { isValid: false, error: 'Game not initialized' };
+        }
+
+        // Clear jester reveal - no direct method, just update state
+        const currentState = gameEngineRef.current.getState();
+        currentState.jesterReveal = undefined;
+        gameEngineRef.current.setState(currentState);
+        
+        if (state.gameState) {
+            // Update game state after clearing jester reveal
+            const newState = gameEngineRef.current.getState();
+            
+            // Update local state
+            dispatch({ type: 'SET_GAME_STATE', gameState: newState, source: 'local' });
+        }
+
+        return { isValid: true };
+    }, [state.gameState]);
+
+    const getRemainingPotionDefenseTime = useCallback((): number => {
+        if (!gameEngineRef.current) {
+            return 0;
+        }
+        return gameEngineRef.current.getRemainingPotionDefenseTime();
+    }, []);
+
+    // ============================================
     // Computed properties
     // ============================================
 
@@ -752,6 +869,12 @@ export function GameStateProvider({
         blockKnightAttack,
         allowKnightAttack,
         getRemainingDefenseTime,
+        canPlayWand,
+        getPendingPotionAttack,
+        blockPotionAttack,
+        allowPotionAttack,
+        getRemainingPotionDefenseTime,
+        clearJesterReveal,
     };
 
     return (

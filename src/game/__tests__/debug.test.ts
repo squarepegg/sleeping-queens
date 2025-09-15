@@ -1,4 +1,4 @@
-import { SleepingQueensGame } from '../game';
+import { GameEngine as SleepingQueensGame } from '../engine/GameEngine';
 import { GameMove } from '../types';
 
 describe('Debug Game Flow', () => {
@@ -6,8 +6,8 @@ describe('Debug Game Flow', () => {
     const game = new SleepingQueensGame();
     
     // Add players
-    game.addPlayer({ id: 'player1', name: 'Alice', isConnected: true });
-    game.addPlayer({ id: 'player2', name: 'Bob', isConnected: true });
+    game.addPlayer({ id: 'player1', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
+    game.addPlayer({ id: 'player2', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     
     // Start game
     const startResult = game.startGame();
@@ -27,7 +27,7 @@ describe('Debug Game Flow', () => {
     console.log('Current player:', currentPlayer.name);
     
     // Give them a king to test with
-    const kingCard = { id: 'test-king', type: 'king', name: 'King' };
+    const kingCard = { id: 'test-king', type: 'king' as const, name: 'King' };
     currentPlayer.hand.push(kingCard);
     
     const targetQueen = state.sleepingQueens[0];

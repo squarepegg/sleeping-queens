@@ -44,6 +44,16 @@ export function SleepingQueens({
     setIsMounted(true);
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[SleepingQueens] Received props:', {
+      sleepingQueensCount: sleepingQueens.length,
+      sleepingQueens: sleepingQueens.map(q => q.name),
+      initialQueensLayoutCount: initialQueensLayout?.length,
+      initialQueensLayout: initialQueensLayout?.map(q => q?.name || 'null')
+    });
+  }, [sleepingQueens, initialQueensLayout]);
+
   // Create fixed layout grid that maintains positions (including empty spaces)
   const queenBlocks = useMemo(() => {
     // Use the layout with fixed positions if provided, otherwise create from current queens

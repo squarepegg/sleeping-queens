@@ -38,15 +38,25 @@ export interface Player {
 }
 
 export interface GameMove {
-  type: 'play_king' | 'play_knight' | 'play_dragon' | 'play_wand' | 'play_potion' | 'play_jester' | 'play_math' | 'discard' | 'stage_card';
+  type: 'play_king' | 'play_knight' | 'play_dragon' | 'play_wand' | 'play_potion' | 'play_jester' | 'play_math' | 'play_equation' | 'discard' | 'stage_card';
   playerId: string;
   cards: Card[];
+  // Legacy/alternative property names for backwards compatibility
+  cardId?: string;
+  cardIds?: string[];
   targetCard?: Card;
   targetPlayer?: string;
+  // Legacy/alternative property names
+  targetQueen?: string;
+  targetQueenId?: string;
+  targetPlayerId?: string;
   mathEquation?: {
     cards: NumberCard[];
     equation: string;
     result: number;
+    left?: number;
+    operator?: string;
+    right?: number;
   };
   timestamp: number;
 }
@@ -65,6 +75,9 @@ export interface GameState {
   updatedAt: number;
   roomCode: string;
   maxPlayers: number;
+  version: number; // For optimistic locking and race condition prevention
+  lastMoveId?: string; // Track last move for deduplication
+  lastMoveBy?: string; // Track who made the last move
   stagedCard?: {
     cards: Card[];
     playerId: string;
@@ -82,6 +95,20 @@ export interface GameState {
     timestamp: number;
     defenseDeadline: number; // When defense window expires
   };
+  pendingPotionAttack?: {
+    attacker: string;
+    target: string;
+    targetQueen: Queen;
+    timestamp: number;
+    defenseDeadline: number; // When defense window expires
+  };
+  roseQueenBonus?: {
+    playerId: string;
+    pending: boolean;
+  };
+  gameMessage?: string; // Message to display about the current game state
+  stagedCards?: Card[]; // Cards that are staged for the next move
+  moveHistory?: { message: string; timestamp: number; playerId: string }[]; // Move history for display
 }
 
 export interface GameConfig {
@@ -117,3 +144,5 @@ export interface GameEventPayload<T extends GameEventType = GameEventType> {
   gameId: string;
   timestamp: number;
 }
+
+export type Move = GameMove;

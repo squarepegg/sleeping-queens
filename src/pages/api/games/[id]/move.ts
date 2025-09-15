@@ -1,12 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { SleepingQueensGame } from '../../../../game/game';
+import { GameEngine as SleepingQueensGame } from '../../../../game/engine/GameEngine';
 import { GameMove } from '../../../../game/types';
 import { supabase } from '../../../../lib/supabase';
+import { subscribeWithTimeout, safeUnsubscribe } from '../../../../lib/utils/supabase-helpers';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Move endpoint - handles all game moves including Jester queen selection
+  // Force recompilation: v3
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -38,6 +41,17 @@ export default async function handler(
     // Load game engine
     const game = new SleepingQueensGame((gameData as any).state);
 
+    // Check for duplicate move (idempotency)
+    const moveId = `${move.playerId}-${move.timestamp}`;
+    if ((gameData as any).state.lastMoveId === moveId) {
+      console.log('[Move API] Duplicate move detected, returning current state');
+      return res.status(200).json({
+        isValid: true,
+        gameState: (gameData as any).state,
+        duplicate: true
+      });
+    }
+
     // Validate and execute move
     const result = game.playMove(move);
 
@@ -49,6 +63,11 @@ export default async function handler(
     }
 
     const newGameState = game.getState();
+    
+    // Update version and tracking info
+    newGameState.version = ((gameData as any).state.version || 0) + 1;
+    newGameState.lastMoveId = moveId;
+    newGameState.lastMoveBy = move.playerId;
 
     // Update game in database
     const { error: updateError } = await (supabase as any)
@@ -85,6 +104,42 @@ export default async function handler(
       }
     } else {
       console.warn('Player not found in players table, skipping move logging');
+    }
+
+    // Broadcast the updated game state to all connected clients
+    const broadcastChannel = supabase.channel(`direct-game-${gameId}`);
+    
+    try {
+      // Subscribe with timeout protection
+      const subscribed = await subscribeWithTimeout(broadcastChannel, 3000);
+      
+      if (subscribed) {
+        // Broadcast the game state update
+        const result = await broadcastChannel.send({
+          type: 'broadcast',
+          event: 'game_update',
+          payload: { 
+            gameState: newGameState,
+            movePlayerId: move.playerId,
+            moveType: move.type,
+            timestamp: Date.now()
+          }
+        });
+        
+        if (result === 'ok') {
+          console.log(`[Move API] Successfully broadcast move for game ${gameId}`);
+        } else {
+          console.warn('[Move API] Broadcast may have failed, but move was processed');
+        }
+      } else {
+        console.warn('[Move API] Could not establish broadcast channel, but move was processed');
+      }
+    } catch (broadcastError) {
+      console.error('[Move API] Broadcast error (non-critical):', broadcastError);
+      // Continue - the move itself was successful
+    } finally {
+      // Always clean up the channel
+      await safeUnsubscribe(broadcastChannel);
     }
 
     res.status(200).json({

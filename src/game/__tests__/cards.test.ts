@@ -85,14 +85,14 @@ describe('Sleeping Queens Card System', () => {
       expect(GAME_CONFIG.initialHandSize).toBe(5);
       expect(GAME_CONFIG.maxHandSize).toBe(5);
 
-      // Win conditions should be properly configured
+      // Win conditions should be properly configured (per official rules)
       expect(GAME_CONFIG.queensToWin[2]).toBe(5);
-      expect(GAME_CONFIG.queensToWin[3]).toBe(4);
+      expect(GAME_CONFIG.queensToWin[3]).toBe(5); // Fixed: 2-3 players need 5 queens
       expect(GAME_CONFIG.queensToWin[4]).toBe(4);
       expect(GAME_CONFIG.queensToWin[5]).toBe(4);
 
       expect(GAME_CONFIG.pointsToWin[2]).toBe(50);
-      expect(GAME_CONFIG.pointsToWin[3]).toBe(40);
+      expect(GAME_CONFIG.pointsToWin[3]).toBe(50); // Fixed: 2-3 players need 50 points
       expect(GAME_CONFIG.pointsToWin[4]).toBe(40);
       expect(GAME_CONFIG.pointsToWin[5]).toBe(40);
     });
@@ -135,7 +135,7 @@ describe('Sleeping Queens Card System', () => {
     test('should get correct card display names', () => {
       const queen: Queen = {
         id: 'test-queen',
-        type: 'queen',
+        type: 'queen' as const,
         name: 'Test Queen',
         points: 10,
         isAwake: false
@@ -143,7 +143,7 @@ describe('Sleeping Queens Card System', () => {
 
       const numberCard: NumberCard = {
         id: 'test-number',
-        type: 'number',
+        type: 'number' as const,
         value: 7
       };
 
@@ -161,7 +161,7 @@ describe('Sleeping Queens Card System', () => {
     test('should get correct card points', () => {
       const queen: Queen = {
         id: 'test-queen',
-        type: 'queen',
+        type: 'queen' as const,
         name: 'Test Queen',
         points: 15,
         isAwake: false
@@ -181,7 +181,7 @@ describe('Sleeping Queens Card System', () => {
   describe('Math Equation Validation', () => {
     const createNumberCard = (value: number, id?: string): NumberCard => ({
       id: id || `test-${value}`,
-      type: 'number',
+      type: 'number' as const,
       value,
       name: value.toString()
     });
@@ -206,14 +206,15 @@ describe('Sleeping Queens Card System', () => {
       expect(isValidMathEquation(cards)).toBe(true);
     });
 
-    test('should validate multiplication equations', () => {
+    test('should reject multiplication equations (only addition allowed per rules)', () => {
       const cards = [
         createNumberCard(2, 'card1'),
         createNumberCard(3, 'card2'),
         createNumberCard(6, 'card3')
       ];
 
-      expect(isValidMathEquation(cards)).toBe(true);
+      // Multiplication is NOT allowed per official rules - only addition
+      expect(isValidMathEquation(cards)).toBe(false);
     });
 
     test('should reject invalid equations', () => {

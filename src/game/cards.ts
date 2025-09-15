@@ -297,13 +297,13 @@ export const GAME_CONFIG = {
   maxPlayers: 5,
   queensToWin: {
     2: 5,
-    3: 4,
+    3: 5,  // Fixed: 2-3 players need 5 queens
     4: 4,
     5: 4,
   } as Record<number, number>,
   pointsToWin: {
     2: 50,
-    3: 40,
+    3: 50,  // Fixed: 2-3 players need 50 points
     4: 40,
     5: 40,
   } as Record<number, number>,
@@ -350,45 +350,49 @@ export function getCardPoints(card: Card): number {
 }
 
 export function isValidMathEquation(cards: NumberCard[]): boolean {
-  if (cards.length < 2) return false;
-  
+  if (cards.length < 3) return false; // Need at least 3 cards for an equation
+
   const values = cards.map(c => c.value || 0);
-  
-  // Check for valid addition equations
-  for (let i = 0; i < values.length - 1; i++) {
-    for (let j = i + 1; j < values.length; j++) {
-      const sum = values[i] + values[j];
-      const remaining = values.filter((_, idx) => idx !== i && idx !== j);
-      
-      if (remaining.includes(sum)) {
+
+  // Check for valid addition equations ONLY (per official rules)
+  // Try all possible combinations where some cards add up to another card
+  for (let targetIdx = 0; targetIdx < values.length; targetIdx++) {
+    const target = values[targetIdx];
+    const others = values.filter((_, idx) => idx !== targetIdx);
+
+    // Check if any subset of others sums to target
+    // For 2 cards: a + b = target
+    if (others.length >= 2) {
+      for (let i = 0; i < others.length - 1; i++) {
+        for (let j = i + 1; j < others.length; j++) {
+          if (others[i] + others[j] === target) {
+            return true; // Found valid equation like 2 + 3 = 5
+          }
+        }
+      }
+    }
+
+    // For 3+ cards: a + b + c = target
+    if (others.length >= 3) {
+      for (let i = 0; i < others.length - 2; i++) {
+        for (let j = i + 1; j < others.length - 1; j++) {
+          for (let k = j + 1; k < others.length; k++) {
+            if (others[i] + others[j] + others[k] === target) {
+              return true; // Found valid equation like 2 + 3 + 4 = 9
+            }
+          }
+        }
+      }
+    }
+
+    // For all cards summing to target (when there are 4+ cards)
+    if (others.length >= 4) {
+      const sum = others.reduce((a, b) => a + b, 0);
+      if (sum === target) {
         return true;
       }
     }
   }
-  
-  // Check for valid multiplication equations  
-  for (let i = 0; i < values.length - 1; i++) {
-    for (let j = i + 1; j < values.length; j++) {
-      const product = values[i] * values[j];
-      const remaining = values.filter((_, idx) => idx !== i && idx !== j);
-      
-      if (remaining.includes(product)) {
-        return true;
-      }
-    }
-  }
-  
-  // Check for valid subtraction equations
-  for (let i = 0; i < values.length - 1; i++) {
-    for (let j = i + 1; j < values.length; j++) {
-      const diff = Math.abs(values[i] - values[j]);
-      const remaining = values.filter((_, idx) => idx !== i && idx !== j);
-      
-      if (remaining.includes(diff)) {
-        return true;
-      }
-    }
-  }
-  
+
   return false;
 }
