@@ -222,8 +222,10 @@ describe('🏗️ ARCHITECTURAL COMPLIANCE TEST', () => {
       const loaded = await repository.load('test-game-123');
 
       expect(loaded).toBeTruthy();
-      expect(loaded!.id).toBe('test-game-123');
-      expect(loaded!.roomCode).toBe('TEST123');
+      if (loaded) {
+        expect(loaded.id).toBe('test-game-123');
+        expect(loaded.roomCode).toBe('TEST123');
+      }
     });
 
     it('should handle events through event bus', () => {
@@ -281,9 +283,10 @@ describe('🏗️ ARCHITECTURAL COMPLIANCE TEST', () => {
       // Domain layer should only import from within domain
       // This test ensures we haven't violated the dependency rules
       expect(() => {
-        const rules = new KingRules();
-        const calculator = new ScoreCalculator();
+        const _rules = new KingRules();
+        const _calculator = new ScoreCalculator();
         // CardFactory functions are module exports, not class methods
+        // These are instantiated to verify imports work, but not used
       }).not.toThrow();
     });
 
@@ -291,16 +294,18 @@ describe('🏗️ ARCHITECTURAL COMPLIANCE TEST', () => {
       // Application layer can use domain but should not import infrastructure directly
       expect(() => {
         const eventBus = new SimpleEventBus(); // This is injected, not imported in real app
-        const orchestrator = new GameOrchestrator(eventBus);
+        const _orchestrator = new GameOrchestrator(eventBus);
+        // Orchestrator is instantiated to verify it can be created with dependencies
       }).not.toThrow();
     });
 
     it('should respect layer boundaries - Infrastructure can use Application and Domain', () => {
       // Infrastructure can implement application ports using domain models
       expect(() => {
-        const repository = new InMemoryGameRepository();
-        const eventBus = new SimpleEventBus();
-        const shuffler = new CardShuffler();
+        const _repository = new InMemoryGameRepository();
+        const _eventBus = new SimpleEventBus();
+        const _shuffler = new CardShuffler();
+        // These are instantiated to verify imports and construction work
       }).not.toThrow();
     });
   });

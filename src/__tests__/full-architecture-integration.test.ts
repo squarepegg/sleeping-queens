@@ -1,5 +1,5 @@
 // Full integration test proving the entire architecture works end-to-end
-import {createDeck, createSleepingQueens, QUEENS} from '../domain/factories/CardFactory';
+import {createDeck, createSleepingQueens} from '../domain/factories/CardFactory';
 import {GameState} from '../domain/models/GameState';
 import {Player} from '../domain/models/Player';
 import {GameMove} from '../domain/models/GameMove';
@@ -76,7 +76,10 @@ describe('🌐 FULL ARCHITECTURE INTEGRATION TEST', () => {
     // PHASE 4: Load game state
     const loadedGame = await repository.load(gameId);
     expect(loadedGame).toBeTruthy();
-    expect(loadedGame!.id).toBe(gameId);
+    if (!loadedGame) {
+      throw new Error('Failed to load game');
+    }
+    expect(loadedGame.id).toBe(gameId);
 
     // PHASE 5: Create a move using domain models
     const targetQueen = queens[0];
@@ -98,12 +101,12 @@ describe('🌐 FULL ARCHITECTURE INTEGRATION TEST', () => {
     };
 
     // PHASE 6: Validate move using domain rules
-    const validationResult = KingRules.validate(move, loadedGame!);
+    const validationResult = KingRules.validate(move, loadedGame);
     expect(validationResult.isValid).toBe(true);
     logger.info('integration-test', 'Move validated by domain rules', { move: move.type });
 
     // PHASE 7: Execute move through application layer
-    const command = new PlayKingCommand(loadedGame!, move);
+    const command = new PlayKingCommand(loadedGame, move);
     expect(command.canExecute()).toBe(true);
 
     const newGameState = command.execute();
@@ -124,7 +127,10 @@ describe('🌐 FULL ARCHITECTURE INTEGRATION TEST', () => {
     // PHASE 10: Persist updated state
     await repository.save(nextTurnState);
     const finalGame = await repository.load(gameId);
-    expect(finalGame!.players[0].queens.length).toBe(1);
+    if (!finalGame) {
+      throw new Error('Failed to load final game state');
+    }
+    expect(finalGame.players[0].queens.length).toBe(1);
 
     // PHASE 11: Test event system
     const events: any[] = [];
@@ -141,7 +147,7 @@ describe('🌐 FULL ARCHITECTURE INTEGRATION TEST', () => {
     logger.info('integration-test', 'Event system verified');
 
     // PHASE 12: Validate through orchestrator
-    const orchestratorResult = orchestrator.validateMove(move, loadedGame!);
+    const orchestratorResult = orchestrator.validateMove(move, loadedGame);
     expect(orchestratorResult.isValid).toBe(true);
 
     logger.info('integration-test', 'Full integration test completed successfully');

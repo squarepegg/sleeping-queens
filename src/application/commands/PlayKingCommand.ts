@@ -38,11 +38,20 @@ export class PlayKingCommand implements Command<GameState> {
       throw new Error('Invalid move parameters');
     }
 
-    const player = this.state.players.find(p => p.id === this.move.playerId)!;
-    const targetQueen = this.state.sleepingQueens.find(q => q.id === targetQueenId)!;
+    const player = this.state.players.find(p => p.id === this.move.playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+    const targetQueen = this.state.sleepingQueens.find(q => q.id === targetQueenId);
+    if (!targetQueen) {
+      throw new Error('Target queen not found');
+    }
 
     // Create new state with immutable updates
-    const kingCard = player.hand.find(c => c.id === cardId)!;
+    const kingCard = player.hand.find(c => c.id === cardId);
+    if (!kingCard) {
+      throw new Error('King card not found in hand');
+    }
     const newHand = player.hand.filter(c => c.id !== cardId);
     const newQueens = [...player.queens, { ...targetQueen, isAwake: true }];
     const newSleepingQueens = this.state.sleepingQueens.filter(q => q.id !== targetQueenId);
@@ -57,7 +66,10 @@ export class PlayKingCommand implements Command<GameState> {
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
-        newHand.push(newDeck.pop()!);
+        const drawnCard = newDeck.pop();
+        if (drawnCard) {
+          newHand.push(drawnCard);
+        }
       }
     }
 

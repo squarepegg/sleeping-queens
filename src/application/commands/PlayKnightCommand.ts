@@ -39,9 +39,18 @@ export class PlayKnightCommand implements Command<GameState> {
       throw new Error('Invalid move parameters');
     }
 
-    const player = this.state.players.find(p => p.id === this.move.playerId)!;
-    const targetPlayer = this.state.players.find(p => p.id === targetPlayerId)!;
-    const targetQueen = targetPlayer.queens.find(q => q.id === targetQueenId)!;
+    const player = this.state.players.find(p => p.id === this.move.playerId);
+    if (!player) {
+      throw new Error('Player not found');
+    }
+    const targetPlayer = this.state.players.find(p => p.id === targetPlayerId);
+    if (!targetPlayer) {
+      throw new Error('Target player not found');
+    }
+    const targetQueen = targetPlayer.queens.find(q => q.id === targetQueenId);
+    if (!targetQueen) {
+      throw new Error('Target queen not found');
+    }
 
     // Check if target has dragon defense
     const targetHasDragon = targetPlayer.hand.some(card => card.type === 'dragon');
@@ -67,7 +76,10 @@ export class PlayKnightCommand implements Command<GameState> {
       };
 
       // Remove knight card from attacker's hand and add to discard pile
-      const knightCard = player.hand.find(c => c.id === cardId)!;
+      const knightCard = player.hand.find(c => c.id === cardId);
+      if (!knightCard) {
+        throw new Error('Knight card not found in hand');
+      }
       const newAttackerHand = player.hand.filter(c => c.id !== cardId);
       let newDiscardPile = [...this.state.discardPile, knightCard];
       let newDeck = [...this.state.deck];
@@ -80,7 +92,10 @@ export class PlayKnightCommand implements Command<GameState> {
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
-          newAttackerHand.push(newDeck.pop()!);
+          const drawnCard = newDeck.pop();
+          if (drawnCard) {
+            newAttackerHand.push(drawnCard);
+          }
         }
       }
 
@@ -109,7 +124,10 @@ export class PlayKnightCommand implements Command<GameState> {
       };
     } else {
       // Execute attack immediately
-      const knightCard = player.hand.find(c => c.id === cardId)!;
+      const knightCard = player.hand.find(c => c.id === cardId);
+      if (!knightCard) {
+        throw new Error('Knight card not found in hand');
+      }
       const newAttackerHand = player.hand.filter(c => c.id !== cardId);
       let newAttackerQueens = [...player.queens, targetQueen];
       const newTargetQueens = targetPlayer.queens.filter(q => q.id !== targetQueenId);
@@ -144,7 +162,10 @@ export class PlayKnightCommand implements Command<GameState> {
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
-          newAttackerHand.push(newDeck.pop()!);
+          const drawnCard = newDeck.pop();
+          if (drawnCard) {
+            newAttackerHand.push(drawnCard);
+          }
         }
       }
 

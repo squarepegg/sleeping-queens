@@ -154,7 +154,10 @@ export class GameEngineAdapter {
       const newHand: Card[] = [];
       for (let i = 0; i < 5; i++) {
         if (newDeck.length > 0) {
-          newHand.push(newDeck.pop()!);
+          const card = newDeck.pop();
+          if (card) {
+            newHand.push(card);
+          }
         }
       }
       // Log card dealing for each player
@@ -321,9 +324,14 @@ export class GameEngineAdapter {
       return { isValid: false, error: 'No pending knight attack' };
     }
 
+    const targetId = this.gameState.pendingKnightAttack.target;
+    if (!targetId) {
+      return { isValid: false, error: 'No target in pending knight attack' };
+    }
+
     const move: GameMove = {
       type: 'allow_knight_attack' as any,
-      playerId: this.gameState.pendingKnightAttack.target!,
+      playerId: targetId,
       cards: [],
       timestamp: Date.now()
     };

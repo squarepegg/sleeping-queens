@@ -119,8 +119,9 @@ describe('Wand Turn Bug', () => {
     expect(state.currentPlayerId).toBe(player2Id);
 
     // Player 2 should still have their queen
-    const player2 = state.players.find(p => p.id === player2Id)!;
-    expect(player2.queens).toHaveLength(1);
-    expect(player2.queens[0].name).toBe('Cat Queen');
+    const player2 = state.players.find(p => p.id === player2Id);
+    expect(player2).toBeDefined();
+    expect(player2?.queens).toHaveLength(1);
+    expect(player2?.queens[0].name).toBe('Cat Queen');
   });
 });

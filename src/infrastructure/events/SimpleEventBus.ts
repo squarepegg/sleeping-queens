@@ -14,7 +14,10 @@ export class SimpleEventBus implements EventBus {
       this.listeners.set(eventType, new Set());
     }
 
-    this.listeners.get(eventType)!.add(handler as EventHandler);
+    const listeners = this.listeners.get(eventType);
+    if (listeners) {
+      listeners.add(handler as EventHandler);
+    }
 
     return {
       unsubscribe: () => {

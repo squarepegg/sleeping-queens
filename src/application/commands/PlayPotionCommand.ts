@@ -84,7 +84,10 @@ export class PlayPotionCommand implements Command<GameState> {
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
-          newHand.push(newDeck.pop()!);
+          const drawnCard = newDeck.pop();
+        if (drawnCard) {
+          newHand.push(drawnCard);
+        }
         }
       }
 
@@ -117,7 +120,10 @@ export class PlayPotionCommand implements Command<GameState> {
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
-          newAttackerHand.push(newDeck.pop()!);
+          const drawnCard = newDeck.pop();
+        if (drawnCard) {
+          newAttackerHand.push(drawnCard);
+        }
         }
       }
 
@@ -175,7 +181,10 @@ export class PlayPotionCommand implements Command<GameState> {
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
-        newHand.push(newDeck.pop()!);
+        const drawnCard = newDeck.pop();
+        if (drawnCard) {
+          newHand.push(drawnCard);
+        }
       }
     }
 

@@ -55,7 +55,8 @@ export class GameOrchestrator {
       if (move.type === 'play_jester') {
         if (newState.jesterReveal?.revealedCard?.type === 'number') {
           const value = (newState.jesterReveal.revealedCard as any).value || 1;
-          const targetPlayer = newState.players.find(p => p.id === newState.jesterReveal!.targetPlayerId);
+          const targetPlayerId = newState.jesterReveal?.targetPlayerId;
+          const targetPlayer = targetPlayerId ? newState.players.find(p => p.id === targetPlayerId) : undefined;
           message = `Revealed ${value}! ${targetPlayer?.name || 'Player'} gets to wake a queen!`;
         } else if (newState.jesterReveal?.powerCardRevealed) {
           // Power card was revealed - player keeps turn
@@ -188,7 +189,8 @@ export class GameOrchestrator {
             // Draw replacement card if hand is below 5
             const newDeck = [...state.deck];
             if (newHand.length < 5 && newDeck.length > 0) {
-              newHand.push(newDeck.pop()!);
+              const card = newDeck.pop();
+              if (card) newHand.push(card);
             }
 
             const newPlayers = [...state.players];
@@ -215,7 +217,8 @@ export class GameOrchestrator {
             // Draw replacement card if hand is below 5
             const newDeck = [...state.deck];
             if (newHand.length < 5 && newDeck.length > 0) {
-              newHand.push(newDeck.pop()!);
+              const card = newDeck.pop();
+              if (card) newHand.push(card);
             }
 
             const newPlayers = [...state.players];
@@ -280,7 +283,8 @@ export class GameOrchestrator {
             newDiscardPile = [];
           }
           if (newDeck.length > 0) {
-            newHand.push(newDeck.pop()!);
+            const card = newDeck.pop();
+            if (card) newHand.push(card);
           } else {
             break; // No more cards available
           }
@@ -618,7 +622,8 @@ export class GameOrchestrator {
         }
 
         if (newDeck.length > 0) {
-          newHand.push(newDeck.pop()!);
+          const card = newDeck.pop();
+          if (card) newHand.push(card);
         }
       }
 
