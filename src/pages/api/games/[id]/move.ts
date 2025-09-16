@@ -39,6 +39,19 @@ export default async function handler(
       return res.status(404).json({ error: 'Game not found' });
     }
 
+    // Check if game is already finished
+    if ((gameData as any).state?.winner) {
+      console.log('[move] Rejecting move - game already finished', {
+        gameId,
+        winner: (gameData as any).state.winner,
+        attemptedMove: move.type
+      });
+      return res.status(400).json({
+        error: 'Game has already ended',
+        winner: (gameData as any).state.winner
+      });
+    }
+
     // Load game engine
     const game = new SleepingQueensGame((gameData as any).state);
 
@@ -96,10 +109,16 @@ export default async function handler(
       .single();
 
     if (playerExists) {
+      // Include lastAction in the move data for history
+      const moveDataWithAction = {
+        ...move,
+        lastAction: updatedGameState.lastAction
+      };
+
       const { error: moveError } = await (supabase as any).from('game_moves').insert({
         game_id: gameId,
         player_id: (playerExists as any).id, // Use the actual player.id, not the user_id
-        move_data: move,
+        move_data: moveDataWithAction,
       });
 
       if (moveError) {

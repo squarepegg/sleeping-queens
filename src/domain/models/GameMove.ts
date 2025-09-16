@@ -12,6 +12,7 @@ export type MoveType =
   | 'play_equation'
   | 'discard'
   | 'stage_cards'
+  | 'clear_staged'
   | 'allow_knight_attack'
   | 'allow_potion_attack'
   | 'rose_queen_bonus';

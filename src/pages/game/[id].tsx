@@ -88,26 +88,10 @@ function GameContent() {
     if (state.gameState.phase === 'waiting') {
         console.log('[GameContent] Rendering GameLobby for waiting phase');
         return <GameLobby />;
-    } else if (state.gameState.phase === 'playing') {
-        console.log('[GameContent] Rendering NewGameBoard for playing phase');
+    } else if (state.gameState.phase === 'playing' || state.gameState.phase === 'ended') {
+        // Show the game board even when ended - GameOverOverlay will handle the end state
+        console.log('[GameContent] Rendering NewGameBoard for phase:', state.gameState.phase);
         return <NewGameBoard />;
-    } else if (state.gameState.phase === 'ended') {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
-                <div className="text-center max-w-md">
-                    <h1 className="text-3xl font-bold text-white mb-4">Game Over!</h1>
-                    <p className="text-xl text-gray-200 mb-6">
-                        Winner: {state.gameState.winner || 'Unknown'}
-                    </p>
-                    <button
-                        onClick={() => window.location.href = '/lobby'}
-                        className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
-                    >
-                        Back to Lobby
-                    </button>
-                </div>
-            </div>
-        );
     }
 
     // Fallback for unknown phase

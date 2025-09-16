@@ -1,5 +1,5 @@
 // Infrastructure service for shuffling cards
-import {Card} from '../../domain/models/Card';
+import {Card} from '@/domain/models/Card';
 
 export class CardShuffler {
   static shuffle<T extends Card>(cards: ReadonlyArray<T>): ReadonlyArray<T> {

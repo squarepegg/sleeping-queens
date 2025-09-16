@@ -4,6 +4,7 @@ import {GameState} from '../../domain/models/GameState';
 import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {KnightRules} from '../../domain/rules/KnightRules';
 import {TurnManager} from '../../domain/services/TurnManager';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class PlayKnightCommand implements Command<GameState> {
   constructor(
@@ -88,7 +89,7 @@ export class PlayKnightCommand implements Command<GameState> {
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
@@ -119,6 +120,14 @@ export class PlayKnightCommand implements Command<GameState> {
         discardPile: newDiscardPile,
         pendingKnightAttack: pendingAttack,
         stagedCards: newStagedCards,
+        lastAction: {
+          playerId: this.move.playerId,
+          playerName: player.name,
+          actionType: 'play_knight',
+          cards: [knightCard],
+          message: `${player.name} played Knight, waiting for ${targetPlayer.name} to respond...`,
+          timestamp: Date.now()
+        },
         updatedAt: Date.now(),
         version: this.state.version + 1
       };
@@ -129,36 +138,20 @@ export class PlayKnightCommand implements Command<GameState> {
         throw new Error('Knight card not found in hand');
       }
       const newAttackerHand = player.hand.filter(c => c.id !== cardId);
-      let newAttackerQueens = [...player.queens, targetQueen];
+      const newAttackerQueens = [...player.queens, targetQueen];
       const newTargetQueens = targetPlayer.queens.filter(q => q.id !== targetQueenId);
       let newDiscardPile = [...this.state.discardPile, knightCard];
       let newDeck = [...this.state.deck];
       const newSleepingQueens = [...this.state.sleepingQueens];
 
-      // Check for Cat/Dog Queen conflict for attacker
-      const hasCatQueen = newAttackerQueens.some(q => q.name === 'Cat Queen');
-      const hasDogQueen = newAttackerQueens.some(q => q.name === 'Dog Queen');
-
-      if (hasCatQueen && hasDogQueen) {
-        // Keep the older queen (first acquired), return the newer one
-        if (targetQueen.name === 'Dog Queen') {
-          // Just got Dog Queen, but keep Cat Queen (first acquired)
-          newAttackerQueens = newAttackerQueens.filter(q => q.name !== 'Dog Queen');
-          // Return Dog Queen to sleeping queens
-          newSleepingQueens.push({ ...targetQueen, isAwake: false });
-        } else if (targetQueen.name === 'Cat Queen') {
-          // Just got Cat Queen, but keep Dog Queen (first acquired)
-          newAttackerQueens = newAttackerQueens.filter(q => q.name !== 'Cat Queen');
-          // Return Cat Queen to sleeping queens
-          newSleepingQueens.push({ ...targetQueen, isAwake: false });
-        }
-      }
+      // Note: Cat/Dog Queen conflict is now prevented by validation in KnightRules
+      // So we no longer need to check for conflict here
 
       // Draw replacement card for attacker only if hand is below 5 cards
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
@@ -193,10 +186,10 @@ export class PlayKnightCommand implements Command<GameState> {
         stagedCards: clearedStagedCards,
         lastAction: {
           playerId: this.move.playerId,
-          playerName: attacker.name,
+          playerName: player.name,
           actionType: 'play_knight',
           cards: [knightCard],
-          message: `${attacker.name} used Knight to steal ${targetQueen.name} from ${targetPlayer?.name}!`,
+          message: `${player.name} used Knight to steal ${targetQueen.name} (${targetQueen.points} points) from ${targetPlayer?.name}!`,
           timestamp: Date.now()
         },
         updatedAt: Date.now(),
@@ -205,12 +198,4 @@ export class PlayKnightCommand implements Command<GameState> {
     }
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 }

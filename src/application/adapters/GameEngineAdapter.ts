@@ -255,15 +255,6 @@ export class GameEngineAdapter {
   }
 
   /**
-   * Reset the game
-   */
-  resetGame(): void {
-    const maxPlayers = this.gameState.maxPlayers;
-    this.gameState = this.createInitialGameState(maxPlayers);
-    this.repository.save(this.gameState);
-  }
-
-  /**
    * Helper methods for testing and UI
    */
   getPendingKnightAttack() {
@@ -287,35 +278,6 @@ export class GameEngineAdapter {
     return player?.hand.some(c => c.type === 'wand') || false;
   }
 
-  removePlayer(playerId: string): boolean {
-    if (this.gameState.phase !== 'waiting') {
-      return false; // Can't remove players after game starts
-    }
-
-    const playerIndex = this.gameState.players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) {
-      return false;
-    }
-
-    const newPlayers = this.gameState.players.filter(p => p.id !== playerId);
-    this.gameState = {
-      ...this.gameState,
-      players: newPlayers,
-      updatedAt: Date.now()
-    };
-
-    this.repository.save(this.gameState);
-    return true;
-  }
-
-  getCurrentTurnPlayer(): Player | null {
-    if (this.gameState.currentPlayerIndex < 0 ||
-        this.gameState.currentPlayerIndex >= this.gameState.players.length) {
-      return null;
-    }
-    return this.gameState.players[this.gameState.currentPlayerIndex];
-  }
-
   /**
    * Allow a knight attack to proceed (defender chooses not to block)
    */
@@ -330,7 +292,7 @@ export class GameEngineAdapter {
     }
 
     const move: GameMove = {
-      type: 'allow_knight_attack' as any,
+      type: 'allow_knight_attack',
       playerId: targetId,
       cards: [],
       timestamp: Date.now()
@@ -348,7 +310,7 @@ export class GameEngineAdapter {
     }
 
     const move: GameMove = {
-      type: 'allow_potion_attack' as any,
+      type: 'allow_potion_attack',
       playerId: this.gameState.pendingPotionAttack.attacker,
       cards: [],
       timestamp: Date.now()

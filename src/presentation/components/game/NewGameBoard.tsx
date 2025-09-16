@@ -23,12 +23,16 @@ import {DrawDiscardPiles} from './DrawDiscardPiles';
 import {DraggableCard, DragOverlay as CardDragOverlay} from './DraggableCard';
 import {DroppableArea} from './DroppableArea';
 import {PlayAreaDropZone} from './PlayAreaDropZone';
-import {PlayedCardsPopover} from './PlayedCardsPopover';
+import {StagingDrawer} from './StagingDrawer';
+import {HandOverlay} from './HandOverlay';
+import {DefenseNotification} from './DefenseNotification';
 
 // Import modals
 import {DragonBlockModal} from './modals/DragonBlockModal';
 import {WandBlockModal} from './modals/WandBlockModal';
 import {WinModal} from './modals/WinModal';
+import {MoveHistorySidebar} from './MoveHistorySidebar';
+import {GameOverOverlay} from './GameOverOverlay';
 
 // Import icons
 import {Crown, Sparkles, Trophy} from 'lucide-react';
@@ -52,6 +56,15 @@ export function NewGameBoard() {
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);  // For multi-select
   const [showPopover, setShowPopover] = useState(false);
+  const [isPlayingCards, setIsPlayingCards] = useState(false);
+  const [defenseNotification, setDefenseNotification] = useState<{
+    type: 'dragon' | 'wand';
+    defender: string;
+    attacker: string;
+    queen?: string;
+  } | null>(null);
+  const [showActionResult, setShowActionResult] = useState(false);
+  const [drawerDismissed, setDrawerDismissed] = useState(false);
   
   // Configure sensors for both mouse and touch with better settings
   const pointerSensor = useSensor(PointerSensor, {
@@ -205,6 +218,8 @@ export function NewGameBoard() {
     const card = active.data.current?.card;
     if (card) {
       setActiveDragCard(card);
+      // Dismiss the drawer when starting to drag a card
+      setDrawerDismissed(true);
     }
   }, []);
 
@@ -355,6 +370,61 @@ export function NewGameBoard() {
     setStagedCards(prev => [...prev, card]);
     setShowPopover(true);
   }, []);
+
+  // Handle action result display for staging drawer
+  useEffect(() => {
+    if (!gameState?.lastAction) return;
+
+    // Show action result for any action that just happened (for observers)
+    // This ensures equations, discards, and all actions are shown
+    setShowActionResult(true);
+    setDrawerDismissed(false); // Reset dismissal state for new actions
+
+    // Auto-hide after 5 seconds
+    const timer = setTimeout(() => {
+      setShowActionResult(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [gameState?.lastAction?.timestamp]); // Re-trigger on timestamp change
+
+  // Detect defense actions from lastAction
+  useEffect(() => {
+    if (!gameState?.lastAction) return;
+
+    const action = gameState.lastAction;
+    if (action.actionType === 'play_dragon' && action.message?.includes('block')) {
+      // Parse the message to extract attacker and queen info
+      const match = action.message.match(/played Dragon to block (.+?)'s Knight attack on (.+?)!/);
+      if (match) {
+        setDefenseNotification({
+          type: 'dragon',
+          defender: action.playerName,
+          attacker: match[1],
+          queen: match[2]
+        });
+
+        // Auto-dismiss after 5 seconds
+        const timer = setTimeout(() => setDefenseNotification(null), 5000);
+        return () => clearTimeout(timer);
+      }
+    } else if (action.actionType === 'play_wand' && action.message?.includes('block')) {
+      // Parse the message to extract attacker and queen info
+      const match = action.message.match(/played Magic Wand to block (.+?)'s Sleeping Potion on (.+?)!/);
+      if (match) {
+        setDefenseNotification({
+          type: 'wand',
+          defender: action.playerName,
+          attacker: match[1],
+          queen: match[2]
+        });
+
+        // Auto-dismiss after 5 seconds
+        const timer = setTimeout(() => setDefenseNotification(null), 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameState?.lastAction]);
   
   // Auto-complete attacks when defense time expires
   useEffect(() => {
@@ -416,6 +486,9 @@ export function NewGameBoard() {
     // Prevent drag-and-drop from interfering
     event.stopPropagation();
     event.preventDefault();
+
+    // Dismiss the drawer when selecting a card
+    setDrawerDismissed(true);
 
     setSelectedCards(prev => {
       const isSelected = prev.some(c => c.id === card.id);
@@ -748,24 +821,54 @@ export function NewGameBoard() {
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
         <div className="max-w-7xl mx-auto h-full flex flex-col">
 
-          {/* Played Cards Popover - Shows staged cards and jester reveals */}
-          {console.log('[NewGameBoard] Passing to popover:', {
-            lastAction: gameState.lastAction,
-            stagedCards: showPopover ? stagedCards : currentPlayerStagedCards
-          })}
-          <PlayedCardsPopover
-            stagedCards={showPopover ? stagedCards : currentPlayerStagedCards}
-            jesterRevealedCard={jesterReveal?.powerCardRevealed ? jesterReveal.revealedCard : undefined}
-            lastAction={gameState.lastAction}
-            currentPlayerId={currentUserId}
-            onDismiss={handleClearStagedCards}
-            autoDismissMs={
-              // Don't auto-dismiss for action cards that need targets
-              (currentPlayerStagedCards.some((c: any) => ['king', 'knight', 'potion'].includes(c.type))) ? 0 :
-              gameState.lastAction ? 6000 :
-              jesterReveal?.powerCardRevealed ? 8000 : 5000
-            }
-          />
+          {/* Move History Sidebar */}
+          <MoveHistorySidebar gameId={gameState?.id} players={gameState?.players || []} lastAction={gameState?.lastAction} />
+
+
+          {/* Staging Drawer - Shows actions to players who aren't performing them */}
+          {(
+            <StagingDrawer
+              isOpen={
+                // Show if:
+                // 1. Someone has staged cards (not the viewer)
+                // 2. An action just completed (not by the viewer)
+                // 3. AND the drawer hasn't been dismissed by user interaction
+                !drawerDismissed && (
+                  (gameState?.stagedCards && Object.keys(gameState.stagedCards).some(playerId =>
+                    playerId !== currentUserId && gameState.stagedCards![playerId]?.length > 0
+                  )) ||
+                  (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
+                )
+              }
+              cards={
+                // Show staged cards from other players
+                (!showActionResult && gameState?.stagedCards)
+                  ? Object.entries(gameState.stagedCards)
+                      .filter(([playerId]) => playerId !== currentUserId)
+                      .flatMap(([_, cards]) => cards || [])
+                  : []
+              }
+              message={
+                // Show the action message for completed actions
+                (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
+                  ? gameState.lastAction.message || 'Action completed'
+                  : gameState?.stagedCards
+                    ? `${Object.entries(gameState.stagedCards)
+                        .filter(([playerId]) => playerId !== currentUserId && gameState.stagedCards![playerId]?.length > 0)
+                        .map(([playerId]) => players.find(p => p.id === playerId)?.name || 'Player')[0]
+                      } is selecting cards...`
+                    : 'Waiting...'
+              }
+              playerName={
+                showActionResult && gameState?.lastAction
+                  ? gameState.lastAction.playerName
+                  : Object.entries(gameState?.stagedCards || {})
+                      .filter(([playerId]) => playerId !== currentUserId && gameState.stagedCards![playerId]?.length > 0)
+                      .map(([playerId]) => players.find(p => p.id === playerId)?.name)[0]
+              }
+              isProcessing={false}
+            />
+          )}
 
           {/* Jester Reveal Notification */}
           {jesterReveal && (
@@ -824,7 +927,7 @@ export function NewGameBoard() {
             {/* Left Players Column */}
             <div className="w-48 flex flex-col gap-3">
               {otherPlayers.slice(0, 2).map(player => (
-                <PlayerCard 
+                <PlayerCard
                   key={player.id}
                   player={player}
                   isCurrentTurn={currentPlayer?.id === player.id}
@@ -832,6 +935,7 @@ export function NewGameBoard() {
                   canSelectOpponentQueen={canSelectOpponentQueen}
                   currentUserId={currentUserId}
                   handleQueenSelect={handleQueenSelect}
+                  currentPlayerQueens={currentPlayer?.queens}
                 />
               ))}
             </div>
@@ -871,19 +975,20 @@ export function NewGameBoard() {
                 </div>
               </div>
               {/* Player Hand Area - Using DroppableArea */}
-              <DroppableArea
-                id="hand"
-                className={clsx(
-                  'backdrop-blur-sm rounded-lg p-4',
-                  isMyTurn 
-                    ? 'bg-green-500/10 border-green-400/30' 
-                    : 'bg-white/5 border-white/10'
-                )}
-                label="Your Hand"
-                disabled={!isMyTurn}
-              >
-                {currentUserPlayer ? (
-                  <>
+              <div className="relative">
+                <DroppableArea
+                  id="hand"
+                  className={clsx(
+                    'backdrop-blur-sm rounded-lg p-4',
+                    isMyTurn
+                      ? 'bg-green-500/10 border-green-400/30'
+                      : 'bg-white/5 border-white/10'
+                  )}
+                  label="Your Hand"
+                  disabled={!isMyTurn}
+                >
+                  {currentUserPlayer ? (
+                    <>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <h3 className="text-lg font-medium text-white">Your Hand</h3>
@@ -909,28 +1014,37 @@ export function NewGameBoard() {
                       </div>
                     </div>
                     
-                    {/* Player's Queens */}
-                    {currentUserPlayer.queens && currentUserPlayer.queens.length > 0 && (
-                      <div className="mb-3">
-                        <div className="flex gap-2 flex-wrap">
+                    {/* Cards Container - Queens on left, regular cards on right */}
+                    <div className="flex gap-4">
+                      {/* Player's Queens - Card style on the left */}
+                      {currentUserPlayer.queens && currentUserPlayer.queens.length > 0 && (
+                        <div className="flex gap-2 flex-shrink-0">
                           {currentUserPlayer.queens.map(queen => (
                             <div
                               key={queen.id}
-                              className="px-2 py-1 rounded bg-purple-500/20 border border-purple-400/30 flex items-center gap-1"
+                              className="relative group"
                             >
-                              <Crown className="h-3 w-3 text-purple-300" />
-                              <span className="text-xs text-white">{queen.name}</span>
-                              <span className="text-xs bg-yellow-500 text-black px-1 rounded">
-                                {queen.points}
-                              </span>
+                              <div className="w-20 h-28 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg border-2 border-purple-400 shadow-xl flex flex-col items-center justify-center p-2 transform transition-transform group-hover:scale-105">
+                                <Crown className="h-6 w-6 text-yellow-400 mb-1" />
+                                <div className="text-xs text-white text-center font-semibold">
+                                  {queen.name}
+                                </div>
+                                <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                                  {queen.points}
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
-                    
-                    {/* Player's Cards - Draggable with Multi-Select */}
-                    <div className="flex flex-wrap gap-2">
+                      )}
+
+                      {/* Divider if there are queens */}
+                      {currentUserPlayer.queens && currentUserPlayer.queens.length > 0 && (
+                        <div className="w-px bg-gray-600/50 mx-2" />
+                      )}
+
+                      {/* Player's Regular Cards - Draggable with Multi-Select */}
+                      <div className="flex flex-wrap gap-2 flex-1">
                       {currentUserPlayer.hand && currentUserPlayer.hand.length > 0 ? (
                         currentUserPlayer.hand
                           .filter(card => !stagedCards.some(sc => sc.id === card.id))
@@ -964,7 +1078,17 @@ export function NewGameBoard() {
                       ) : (
                         <div className="text-gray-400 text-sm">No cards in hand</div>
                       )}
+                      </div>
                     </div>
+
+                    {/* Hand Overlay - Shows staged cards action over the hand */}
+                    {isMyTurn && (
+                      <HandOverlay
+                        cards={currentPlayerStagedCards}
+                        isVisible={currentPlayerStagedCards.length > 0}
+                        onCancel={handleClearStagedCards}
+                      />
+                    )}
 
                     {/* Multi-Select Actions */}
                     {selectedCards.length > 0 && (
@@ -993,13 +1117,14 @@ export function NewGameBoard() {
                     <p className="text-xs mt-2">User ID: {currentUserId || 'Not logged in'}</p>
                   </div>
                 )}
-              </DroppableArea>
+                </DroppableArea>
+              </div>
             </div>
             
             {/* Right Players Column */}
             <div className="w-48 flex flex-col gap-3">
               {otherPlayers.slice(2, 4).map(player => (
-                <PlayerCard 
+                <PlayerCard
                   key={player.id}
                   player={player}
                   isCurrentTurn={currentPlayer?.id === player.id}
@@ -1007,12 +1132,25 @@ export function NewGameBoard() {
                   canSelectOpponentQueen={canSelectOpponentQueen}
                   currentUserId={currentUserId}
                   handleQueenSelect={handleQueenSelect}
+                  currentPlayerQueens={currentPlayer?.queens}
                 />
               ))}
             </div>
           </div>
         </div>
         
+        {/* Defense Notification */}
+        {defenseNotification && (
+          <DefenseNotification
+            isVisible={true}
+            defenderName={defenseNotification.defender}
+            attackerName={defenseNotification.attacker}
+            defenseType={defenseNotification.type}
+            targetQueenName={defenseNotification.queen}
+            onDismiss={() => setDefenseNotification(null)}
+          />
+        )}
+
         {/* Modals */}
         {pendingKnightAttack && pendingKnightAttack.target === currentUserId &&
          currentUserPlayer?.hand?.some(card => card.type === 'dragon') && (
@@ -1038,11 +1176,16 @@ export function NewGameBoard() {
           />
         )}
         
+        {/* Game Over Overlay - replaces the old WinModal redirect */}
         {winner && (
-          <WinModal
-            isOpen={true}
+          <GameOverOverlay
             winner={winner}
-            onClose={() => {}}
+            players={players}
+            currentPlayerId={currentUserId}
+            onBackToLobby={() => {
+              // Navigate back to lobby
+              window.location.href = '/';
+            }}
           />
         )}
       </div>
@@ -1058,20 +1201,22 @@ export function NewGameBoard() {
 }
 
 // PlayerCard component
-function PlayerCard({ 
-  player, 
-  isCurrentTurn, 
+function PlayerCard({
+  player,
+  isCurrentTurn,
   calculateScore,
   canSelectOpponentQueen,
   currentUserId,
-  handleQueenSelect
-}: { 
-  player: Player; 
+  handleQueenSelect,
+  currentPlayerQueens
+}: {
+  player: Player;
   isCurrentTurn: boolean;
   calculateScore: (player: Player) => number;
   canSelectOpponentQueen: boolean;
   currentUserId: string;
   handleQueenSelect: (queen: Queen) => void;
+  currentPlayerQueens?: Queen[];
 }) {
   return (
     <div className={clsx(
@@ -1086,9 +1231,6 @@ function PlayerCard({
       </div>
       <div className="text-xs space-y-1">
         <div className="flex items-center gap-1">
-          <span className="text-gray-300">🃏 {player.hand?.length || 0} cards</span>
-        </div>
-        <div className="flex items-center gap-1">
           <Crown className="h-3 w-3 text-purple-300" />
           <span className="text-purple-200">{player.queens?.length || 0} queens</span>
         </div>
@@ -1098,22 +1240,50 @@ function PlayerCard({
         </div>
       </div>
       {player.queens && player.queens.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 grid grid-cols-3 gap-1">
           {player.queens.map(queen => {
-            const canSelect = canSelectOpponentQueen && player.id !== currentUserId;
+            // Check if this queen can be selected (Knight/Potion and not same player)
+            let canSelect = canSelectOpponentQueen && player.id !== currentUserId;
+            let conflictMessage = '';
+
+            // Additional check for Cat/Dog conflict when using Knight
+            if (canSelect && currentPlayerQueens) {
+              const hasCatQueen = currentPlayerQueens.some(q => q.name === 'Cat Queen');
+              const hasDogQueen = currentPlayerQueens.some(q => q.name === 'Dog Queen');
+
+              if (hasCatQueen && queen.name === 'Dog Queen') {
+                canSelect = false;
+                conflictMessage = 'Cannot steal - you have Cat Queen!';
+              } else if (hasDogQueen && queen.name === 'Cat Queen') {
+                canSelect = false;
+                conflictMessage = 'Cannot steal - you have Dog Queen!';
+              }
+            }
+
             return (
               <div
                 key={queen.id}
                 onClick={() => canSelect && handleQueenSelect(queen)}
                 className={clsx(
-                  "text-xs px-1 py-0.5 rounded transition-all",
-                  canSelect 
-                    ? "bg-red-500/30 hover:bg-red-500/50 cursor-pointer hover:scale-105 border border-red-400"
-                    : "bg-purple-500/20"
+                  "relative group transition-all cursor-pointer",
+                  canSelect && "hover:scale-110"
                 )}
-                title={`${queen.name} (${queen.points} pts)`}
+                title={conflictMessage || `${queen.name} (${queen.points} pts)`}
               >
-                {queen.name.substring(0, 3)}
+                <div className={clsx(
+                  "w-14 h-20 rounded border-2 shadow-lg flex flex-col items-center justify-center p-1 transition-all",
+                  canSelect
+                    ? "bg-gradient-to-br from-red-600/80 to-red-800/80 border-red-400 hover:border-red-300 hover:shadow-red-400/50"
+                    : "bg-gradient-to-br from-purple-600/80 to-purple-800/80 border-purple-400"
+                )}>
+                  <Crown className="h-4 w-4 text-yellow-400 mb-0.5" />
+                  <div className="text-[8px] text-white text-center font-semibold leading-tight">
+                    {queen.name.split(' ')[0]}
+                  </div>
+                  <div className="absolute bottom-1 right-1 bg-yellow-400 text-black text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {queen.points}
+                  </div>
+                </div>
               </div>
             );
           })}

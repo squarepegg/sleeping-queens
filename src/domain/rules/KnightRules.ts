@@ -36,6 +36,18 @@ export class KnightRules {
       return { isValid: false, error: 'Target player does not have that queen' };
     }
 
+    // Check for Cat/Dog Queen conflict
+    const attackerHasCatQueen = player.queens.some(q => q.name === 'Cat Queen');
+    const attackerHasDogQueen = player.queens.some(q => q.name === 'Dog Queen');
+
+    if (attackerHasCatQueen && targetQueen.name === 'Dog Queen') {
+      return { isValid: false, error: 'You cannot steal the Dog Queen while you have the Cat Queen! They don\'t get along!' };
+    }
+
+    if (attackerHasDogQueen && targetQueen.name === 'Cat Queen') {
+      return { isValid: false, error: 'You cannot steal the Cat Queen while you have the Dog Queen! They don\'t get along!' };
+    }
+
     return { isValid: true };
   }
 

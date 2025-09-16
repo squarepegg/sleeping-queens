@@ -1,13 +1,21 @@
 // Infrastructure utility for generating IDs
+import { randomUUID } from 'crypto';
+
 export class IdGenerator {
   static generateGameId(): string {
-    // Use proper UUID for database compatibility
-    return this.generateUUID();
+    // Use Node.js built-in crypto.randomUUID (available since Node 14.17)
+    // Falls back to browser's crypto.randomUUID in client-side code
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return randomUUID();
   }
 
   static generatePlayerId(): string {
-    // Use proper UUID for database compatibility
-    return this.generateUUID();
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return randomUUID();
   }
 
   static generateRoomCode(): string {
@@ -18,18 +26,5 @@ export class IdGenerator {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-  }
-
-  static generateMoveId(): string {
-    return `move-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // UUID v4 generator (simplified)
-  static generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
   }
 }

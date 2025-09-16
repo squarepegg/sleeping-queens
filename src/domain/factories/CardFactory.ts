@@ -1,4 +1,5 @@
 import {ActionCard, Card, NumberCard, Queen} from '../models/Card';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export const QUEENS: Queen[] = [
   {
@@ -304,12 +305,7 @@ export function createDeck(): Card[] {
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
-  const shuffled = [...deck];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+  return [...CardShuffler.shuffle(deck)];
 }
 
 export function createSleepingQueens(): Queen[] {

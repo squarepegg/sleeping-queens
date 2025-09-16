@@ -8,7 +8,7 @@
  */
 
 import {act, render, waitFor} from '@testing-library/react'
-import {GameStateProvider, useGameState} from '../lib/context/GameStateContext'
+import {GameStateProvider, useGameState} from '@/lib/context/GameStateContext'
 import React from 'react'
 
 // Mock successful auth
@@ -122,8 +122,7 @@ describe('Integration Tests - Real Bug Scenarios', () => {
       let capturedHookData: any = null
       
       function TestComponent() {
-        const hookData = useGameState()
-        capturedHookData = hookData
+        capturedHookData = useGameState()
         return <div data-testid="test-component">Hook data captured</div>
       }
 

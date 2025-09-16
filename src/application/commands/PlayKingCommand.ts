@@ -4,6 +4,7 @@ import {GameState} from '../../domain/models/GameState';
 import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {KingRules} from '../../domain/rules/KingRules';
 import {TurnManager} from '../../domain/services/TurnManager';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class PlayKingCommand implements Command<GameState> {
   constructor(
@@ -62,7 +63,7 @@ export class PlayKingCommand implements Command<GameState> {
     if (newHand.length < 5) {
       if (newDeck.length === 0 && newDiscardPile.length > 0) {
         // Reshuffle
-        newDeck = this.shuffleCards([...newDiscardPile]);
+        newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
@@ -77,6 +78,7 @@ export class PlayKingCommand implements Command<GameState> {
     let finalQueens = newQueens;
     const hasCatQueen = finalQueens.some(q => q.name === 'Cat Queen');
     const hasDogQueen = finalQueens.some(q => q.name === 'Dog Queen');
+    let conflictMessage = '';
 
     if (hasCatQueen && hasDogQueen) {
       // Keep the older queen (first acquired), return the newer one
@@ -85,11 +87,13 @@ export class PlayKingCommand implements Command<GameState> {
         finalQueens = finalQueens.filter(q => q.name !== 'Dog Queen');
         // Return Dog Queen to sleeping queens
         newSleepingQueens.push({ ...targetQueen, isAwake: false });
+        conflictMessage = ' But Cat Queen and Dog Queen can\'t be together! Dog Queen went back to sleep!';
       } else if (targetQueen.name === 'Cat Queen') {
         // Just got Cat Queen, but keep Dog Queen (first acquired)
         finalQueens = finalQueens.filter(q => q.name !== 'Cat Queen');
         // Return Cat Queen to sleeping queens
         newSleepingQueens.push({ ...targetQueen, isAwake: false });
+        conflictMessage = ' But Cat Queen and Dog Queen can\'t be together! Cat Queen went back to sleep!';
       }
     }
 
@@ -128,7 +132,7 @@ export class PlayKingCommand implements Command<GameState> {
         playerName: this.state.players.find(p => p.id === this.move.playerId)?.name || 'Unknown',
         actionType: 'play_king',
         cards: [newDiscardPile[newDiscardPile.length - 1]], // The king card just discarded
-        message: `${this.state.players.find(p => p.id === this.move.playerId)?.name} woke ${targetQueen.name} with a King!`,
+        message: `${this.state.players.find(p => p.id === this.move.playerId)?.name} woke ${targetQueen.name} (${targetQueen.points} points) with a King!${roseQueenBonus ? ' Rose Queen bonus activated!' : ''}${conflictMessage}`,
         timestamp: Date.now()
       },
       updatedAt: Date.now(),
@@ -136,12 +140,4 @@ export class PlayKingCommand implements Command<GameState> {
     };
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 }

@@ -4,6 +4,7 @@ import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {Command} from '../ports/Command';
 import {JesterRules} from '../../domain/rules/JesterRules';
 import {ScoreCalculator} from '../../domain/services/ScoreCalculator';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class PlayJesterCommand implements Command<GameState> {
   constructor(
@@ -66,7 +67,7 @@ export class PlayJesterCommand implements Command<GameState> {
     // Draw from deck
     if (newDeck.length === 0) {
       // Reshuffle
-      newDeck = this.shuffleCards([...newDiscardPile]);
+      newDeck = [...CardShuffler.shuffle(newDiscardPile)];
       newDiscardPile = [];
     }
 
@@ -76,14 +77,16 @@ export class PlayJesterCommand implements Command<GameState> {
     }
 
     let jesterReveal;
+    let targetIndex: number | undefined;
+    let targetPlayer: any;
 
     // Handle revealed card
     if (revealedCard.type === 'number') {
       // Count players and set up jester reveal
       // Counting starts at 1 (yourself), so value 1 = same player, value 2 = next player, etc.
       const value = (revealedCard as any).value || 1;
-      const targetIndex = (playerIndex + value - 1) % this.state.players.length;
-      const targetPlayer = this.state.players[targetIndex];
+      targetIndex = (playerIndex + value - 1) % this.state.players.length;
+      targetPlayer = this.state.players[targetIndex];
 
       jesterReveal = {
         revealedCard,
@@ -114,12 +117,32 @@ export class PlayJesterCommand implements Command<GameState> {
       hand: newHand
     };
 
+    // Create lastAction message based on what was revealed
+    let lastActionMessage = '';
+    if (revealedCard.type === 'number') {
+      const value = (revealedCard as any).value || 1;
+      // targetPlayer was already calculated above when we have a number card
+      lastActionMessage = `${player.name} played a Jester and revealed a ${value}! ${targetPlayer.name} gets to wake a queen!`;
+    } else {
+      // Power card revealed
+      const cardName = revealedCard.name || revealedCard.type;
+      lastActionMessage = `${player.name} played a Jester and revealed ${cardName}! They keep it and play again!`;
+    }
+
     return {
       ...this.state,
       players: newPlayers,
       deck: newDeck,
       discardPile: newDiscardPile,
       jesterReveal,
+      lastAction: {
+        playerId: this.move.playerId,
+        playerName: player.name,
+        actionType: 'play_jester',
+        cards: [jesterCard],
+        message: lastActionMessage,
+        timestamp: Date.now()
+      },
       updatedAt: Date.now()
     };
   }
@@ -178,7 +201,7 @@ export class PlayJesterCommand implements Command<GameState> {
       if (newJesterHand.length < 5) {
         // Draw a replacement card if available
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle(newDiscardPile)];
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
@@ -202,6 +225,11 @@ export class PlayJesterCommand implements Command<GameState> {
       };
     }
 
+    // Create detailed message about the queen selection
+    const queenMessage = roseQueenBonus
+      ? `${targetPlayer.name} woke ${queen.name} (${queen.points} points) and gets a bonus queen for the Rose Queen!`
+      : `${targetPlayer.name} woke ${queen.name} (${queen.points} points) from the Jester reveal!`;
+
     // Clear jester reveal and return (orchestrator handles turn advancement)
     return {
       ...this.state,
@@ -211,16 +239,16 @@ export class PlayJesterCommand implements Command<GameState> {
       discardPile: newDiscardPile,
       jesterReveal: undefined,
       roseQueenBonus,
+      lastAction: {
+        playerId: targetPlayerId,
+        playerName: targetPlayer.name,
+        actionType: 'play_jester',
+        cards: [],
+        message: queenMessage,
+        timestamp: Date.now()
+      },
       updatedAt: Date.now()
     };
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 }

@@ -3,6 +3,7 @@ import {GameState} from '@/domain/models/GameState';
 import {GameMove, MoveValidationResult} from '@/domain/models/GameMove';
 import {Command} from '../ports/Command';
 import {TurnManager} from '@/domain/services/TurnManager';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class PlayDiscardCommand implements Command<GameState> {
   constructor(
@@ -67,7 +68,7 @@ export class PlayDiscardCommand implements Command<GameState> {
     for (let i = 0; i < cards.length; i++) {
       if (newDeck.length === 0) {
         // Reshuffle discard pile into deck
-        newDeck = this.shuffleCards([...newDiscardPile]);
+        newDeck = [...CardShuffler.shuffle(newDiscardPile)];
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
@@ -91,9 +92,11 @@ export class PlayDiscardCommand implements Command<GameState> {
     // Create action message for all players to see
     let message = '';
     if (cards.length === 1) {
-      message = `discarded a ${cards[0].name}`;
-    } else if (cards.length === 2) {
-      message = `discarded a pair of ${(cards[0] as any).value}s`;
+      const cardName = cards[0].type === 'number' ? `${(cards[0] as any).value}` : cards[0].name;
+      message = `discarded a ${cardName}`;
+    } else if (cards.length === 2 && cards[0].type === 'number' && cards[1].type === 'number') {
+      const value = (cards[0] as any).value;
+      message = `discarded a pair of ${value}s`;
     } else {
       message = `discarded ${cards.length} cards`;
     }
@@ -118,13 +121,5 @@ export class PlayDiscardCommand implements Command<GameState> {
     };
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 
 }

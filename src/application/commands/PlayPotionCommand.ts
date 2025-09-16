@@ -4,6 +4,7 @@ import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {Command} from '../ports/Command';
 import {PotionRules} from '../../domain/rules/PotionRules';
 import {ScoreCalculator} from '../../domain/services/ScoreCalculator';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class PlayPotionCommand implements Command<GameState> {
   constructor(
@@ -80,7 +81,7 @@ export class PlayPotionCommand implements Command<GameState> {
       // Draw replacement card only if hand is below 5 cards
       if (newHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
@@ -100,6 +101,14 @@ export class PlayPotionCommand implements Command<GameState> {
         deck: newDeck,
         discardPile: newDiscardPile,
         pendingPotionAttack: pendingAttack,
+        lastAction: {
+          playerId: this.move.playerId,
+          playerName: player.name,
+          actionType: 'play_potion',
+          cards: [potionCard],
+          message: `${player.name} played Sleeping Potion, waiting for ${targetPlayer.name} to respond...`,
+          timestamp: Date.now()
+        },
         updatedAt: Date.now()
       };
     } else {
@@ -116,7 +125,7 @@ export class PlayPotionCommand implements Command<GameState> {
       // Draw replacement card for attacker only if hand is below 5 cards
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
@@ -177,7 +186,7 @@ export class PlayPotionCommand implements Command<GameState> {
     if (newHand.length < 5) {
       if (newDeck.length === 0) {
         // Reshuffle
-        newDeck = this.shuffleCards([...newDiscardPile]);
+        newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
@@ -273,12 +282,4 @@ export class PlayPotionCommand implements Command<GameState> {
     };
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 }

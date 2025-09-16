@@ -1,6 +1,7 @@
 // Application service for orchestrating game operations
-import {GameState} from '@/domain/models/GameState';
+import {GameState, LastAction} from '@/domain/models/GameState';
 import {GameMove, MoveValidationResult} from '@/domain/models/GameMove';
+import {Queen} from '@/domain/models/Card';
 import {Command} from '../ports/Command';
 import {EventPublisher} from '../ports/EventPublisher';
 import {PlayKingCommand} from '../commands/PlayKingCommand';
@@ -12,6 +13,7 @@ import {TurnManager} from '@/domain/services/TurnManager';
 import {WinConditions} from '@/domain/rules/WinConditions';
 import {debugLogger as testDebugLogger} from '@/infrastructure/logging/DebugLogger';
 import {validateMathEquation} from '@/lib/utils/mathValidator';
+import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class GameOrchestrator {
   constructor(
@@ -55,7 +57,8 @@ export class GameOrchestrator {
 
       if (move.type === 'play_jester') {
         if (newState.jesterReveal?.revealedCard?.type === 'number') {
-          const value = (newState.jesterReveal.revealedCard as any).value || 1;
+          const numberCard = newState.jesterReveal.revealedCard as { id: string; type: 'number'; value: number };
+          const value = numberCard.value || 1;
           const targetPlayerId = newState.jesterReveal?.targetPlayerId;
           const targetPlayer = targetPlayerId ? newState.players.find(p => p.id === targetPlayerId) : undefined;
           message = `Revealed ${value}! ${targetPlayer?.name || 'Player'} gets to wake a queen!`;
@@ -89,11 +92,11 @@ export class GameOrchestrator {
 
       // Check win conditions
       const winResult = WinConditions.checkWinCondition(newState);
-      if (winResult.hasWinner) {
+      if (winResult.hasWinner && winResult.winnerId) {
         newState = {
           ...newState,
           phase: 'ended',
-          winner: winResult.winnerId!
+          winner: winResult.winnerId
         };
       }
 
@@ -200,12 +203,25 @@ export class GameOrchestrator {
             const newPlayers = [...state.players];
             newPlayers[playerIndex] = { ...player, hand: newHand };
 
+            // Get attacker info for the message
+            const attack = state.pendingKnightAttack;
+            const attacker = attack ? state.players.find(p => p.id === attack.attacker) : null;
+            const targetQueen = attack?.targetQueen;
+
             newState = {
               ...newState,
               players: newPlayers,
               deck: newDeck,
               discardPile: newDiscardPile,
-              pendingKnightAttack: undefined
+              pendingKnightAttack: undefined,
+              lastAction: {
+                playerId: move.playerId,
+                playerName: player.name,
+                actionType: 'play_dragon',
+                cards: [dragonCard],
+                message: `${player.name} played Dragon to block ${attacker?.name || 'attacker'}'s Knight attack on ${targetQueen?.name || 'queen'}!`,
+                timestamp: Date.now()
+              }
             };
           }
         } else if (move.type === 'play_wand') {
@@ -228,23 +244,39 @@ export class GameOrchestrator {
             const newPlayers = [...state.players];
             newPlayers[playerIndex] = { ...player, hand: newHand };
 
+            // Get attacker info for the message
+            const attack = state.pendingPotionAttack;
+            const attacker = attack ? state.players.find(p => p.id === attack.attacker) : null;
+            const targetQueen = attack?.targetQueen;
+
             newState = {
               ...newState,
               players: newPlayers,
               deck: newDeck,
               discardPile: newDiscardPile,
-              pendingPotionAttack: undefined
+              pendingPotionAttack: undefined,
+              lastAction: {
+                playerId: move.playerId,
+                playerName: player.name,
+                actionType: 'play_wand',
+                cards: [wandCard],
+                message: `${player.name} played Magic Wand to block ${attacker?.name || 'attacker'}'s Sleeping Potion on ${targetQueen?.name || 'queen'}!`,
+                timestamp: Date.now()
+              }
             };
           }
         }
 
-        newState.updatedAt = Date.now();
-        newState.version = state.version + 1;
+        // Create a new state object with updated timestamp and version
+        const stateWithMetadata = {
+          ...newState,
+          updatedAt: Date.now(),
+          version: state.version + 1
+        };
 
         // After a successful defense, advance turn normally
         // The defender gets their regular turn if they're next
-        const nextState = TurnManager.advanceTurn(newState);
-        return nextState;
+        return TurnManager.advanceTurn(stateWithMetadata);
       }
     };
   }
@@ -278,12 +310,7 @@ export class GameOrchestrator {
         for (let i = 0; i < cardsToReplace; i++) {
           if (newDeck.length === 0 && newDiscardPile.length > 0) {
             // Reshuffle discard pile into deck
-            const shuffled = [...newDiscardPile];
-            for (let j = shuffled.length - 1; j > 0; j--) {
-              const k = Math.floor(Math.random() * (j + 1));
-              [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]];
-            }
-            newDeck = shuffled;
+            newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
             newDiscardPile = [];
           }
           if (newDeck.length > 0) {
@@ -318,29 +345,40 @@ export class GameOrchestrator {
         };
 
         // Build equation string for message using the validator
-        const values = cards.map((c: any) => c.value || 0);
+        const values = cards.map((c) => (c as { value?: number }).value || 0);
         const mathResult = validateMathEquation(values);
         const equationStr = mathResult.isValid && mathResult.equation ?
           mathResult.equation :
           values.join(' ');
         const queenAwakened = newQueens.length > player.queens.length;
 
+        // Get the queen that was awakened if any
+        let queenMessage: string;
+        if (queenAwakened && newQueens.length > 0) {
+          const awakenedQueen = newQueens[newQueens.length - 1];
+          queenMessage = ` and woke ${awakenedQueen.name} (${awakenedQueen.points} points)!`;
+        } else {
+          queenMessage = ` and drew ${cards.length} cards`;
+        }
+
         // Create new state (don't advance turn - orchestrator handles that)
+        const lastAction: LastAction = {
+          playerId: move.playerId,
+          playerName: player.name,
+          actionType: 'play_math',
+          cards: cards,
+          drawnCount: cards.length,
+          message: `${player.name} played equation ${equationStr}${queenMessage}`,
+          timestamp: Date.now()
+        };
+
         return {
           ...state,
           players: newPlayers,
           deck: newDeck,
           discardPile: newDiscardPile,
           sleepingQueens: newSleepingQueens,
-          lastAction: {
-            playerId: move.playerId,
-            playerName: player.name,
-            actionType: 'play_math',
-            cards: cards,
-            drawnCount: cards.length,
-            message: `${player.name} played equation ${equationStr}${queenAwakened ? ' and woke a queen!' : ''}`,
-            timestamp: Date.now()
-          },
+          lastAction,
           updatedAt: Date.now()
         };
       }
@@ -365,28 +403,21 @@ export class GameOrchestrator {
         let message = '';
         if (cards.length > 0) {
           const cardType = cards[0].type;
+          const cardName = cards[0].name || cardType;
           if (cardType === 'king') {
-            message = `${player?.name} played a King - selecting a queen to wake...`;
+            message = `${player?.name} played ${cardName} - selecting a sleeping queen to wake...`;
           } else if (cardType === 'knight') {
-            message = `${player?.name} played a Knight - selecting a queen to steal...`;
+            message = `${player?.name} played ${cardName} - selecting an opponent's queen to steal...`;
           } else if (cardType === 'potion') {
-            message = `${player?.name} played a Sleeping Potion - selecting a queen to put to sleep...`;
+            message = `${player?.name} played ${cardName} - selecting an opponent's queen to put to sleep...`;
           }
         }
 
-        // Create the last action for visibility
-        const lastAction = message ? {
-          playerId: move.playerId,
-          playerName: player?.name || 'Unknown',
-          actionType: cards[0]?.type === 'king' ? 'play_king' :
-                     cards[0]?.type === 'knight' ? 'play_knight' :
-                     'play_potion',
-          cards: cards,
-          message: message,
-          timestamp: Date.now()
-        } : state.lastAction;
+        // Don't create a lastAction for staging - this is not a completed move
+        // The lastAction will be created when the actual move is executed
+        const lastAction = state.lastAction;
 
-        console.log('[GameOrchestrator] Staging cards with lastAction:', lastAction);
+        // Staging cards with lastAction for UI display
 
         // Replace staged cards instead of appending
         // Only one action card should be staged at a time
@@ -423,7 +454,7 @@ export class GameOrchestrator {
     };
   }
 
-  private createAllowKnightCommand(state: GameState, move: GameMove): Command<GameState> {
+  private createAllowKnightCommand(state: GameState, _move: GameMove): Command<GameState> {
     return {
       validate: () => {
         if (!state.pendingKnightAttack) {
@@ -433,7 +464,10 @@ export class GameOrchestrator {
       },
       canExecute: function() { return this.validate().isValid; },
       execute: () => {
-        const attack = state.pendingKnightAttack!;
+        const attack = state.pendingKnightAttack;
+        if (!attack) {
+          throw new Error('No pending knight attack');
+        }
         const attackerIndex = state.players.findIndex(p => p.id === attack.attacker);
         const targetIndex = state.players.findIndex(p => p.id === attack.target);
         const attacker = state.players[attackerIndex];
@@ -443,24 +477,10 @@ export class GameOrchestrator {
         const newAttackerQueens = [...attacker.queens, attack.targetQueen];
         const newTargetQueens = target.queens.filter(q => q.id !== attack.targetQueen.id);
 
-        // Check for Cat/Dog conflict
+        // Note: Cat/Dog Queen conflict is now prevented by validation in KnightRules
+        // So we no longer need to check for conflict here
         const newSleepingQueens = [...state.sleepingQueens];
-        const hasCatQueen = newAttackerQueens.some(q => q.name === 'Cat Queen');
-        const hasDogQueen = newAttackerQueens.some(q => q.name === 'Dog Queen');
-        let finalAttackerQueens = newAttackerQueens;
-
-        if (hasCatQueen && hasDogQueen) {
-          // Keep the older queen (first acquired), return the newer one
-          if (attack.targetQueen.name === 'Dog Queen') {
-            // Just got Dog Queen, but keep Cat Queen (first acquired)
-            finalAttackerQueens = finalAttackerQueens.filter(q => q.name !== 'Dog Queen');
-            newSleepingQueens.push({ ...attack.targetQueen, isAwake: false });
-          } else if (attack.targetQueen.name === 'Cat Queen') {
-            // Just got Cat Queen, but keep Dog Queen (first acquired)
-            finalAttackerQueens = finalAttackerQueens.filter(q => q.name !== 'Cat Queen');
-            newSleepingQueens.push({ ...attack.targetQueen, isAwake: false });
-          }
-        }
+        const finalAttackerQueens = newAttackerQueens;
 
         const newPlayers = state.players.map((p, idx) => {
           if (idx === attackerIndex) {
@@ -479,18 +499,28 @@ export class GameOrchestrator {
           return p;
         });
 
+        const attackMessage = `${attacker?.name} successfully stole ${attack.targetQueen.name} (${attack.targetQueen.points} points) from ${target?.name}!`;
+
         return {
           ...state,
           players: newPlayers,
           sleepingQueens: newSleepingQueens,
           pendingKnightAttack: undefined,
+          lastAction: {
+            playerId: attack.attacker,
+            playerName: attacker?.name || 'Unknown',
+            actionType: 'play_knight',
+            cards: [],
+            message: attackMessage,
+            timestamp: Date.now()
+          },
           updatedAt: Date.now()
         };
       }
     };
   }
 
-  private createAllowPotionCommand(state: GameState, move: GameMove): Command<GameState> {
+  private createAllowPotionCommand(state: GameState, _move: GameMove): Command<GameState> {
     return {
       validate: () => {
         if (!state.pendingPotionAttack) {
@@ -500,7 +530,10 @@ export class GameOrchestrator {
       },
       canExecute: function() { return this.validate().isValid; },
       execute: () => {
-        const attack = state.pendingPotionAttack!;
+        const attack = state.pendingPotionAttack;
+        if (!attack) {
+          throw new Error('No pending potion attack');
+        }
         const newSleepingQueens = [...state.sleepingQueens];
         const newPlayers = [...state.players];
 
@@ -508,9 +541,10 @@ export class GameOrchestrator {
           // Stealing opponent's queen - put it to sleep
           const targetIndex = state.players.findIndex(p => p.id === attack.target);
           const target = state.players[targetIndex];
-          const newTargetQueens = target.queens.filter(q => q.id !== (attack.targetQueen as any).id);
+          const targetQueen = attack.targetQueen as Queen;
+          const newTargetQueens = target.queens.filter(q => q.id !== targetQueen.id);
 
-          newSleepingQueens.push({ ...(attack.targetQueen as any), isAwake: false });
+          newSleepingQueens.push({ ...targetQueen, isAwake: false });
 
           newPlayers[targetIndex] = {
             ...target,
@@ -521,7 +555,8 @@ export class GameOrchestrator {
           // Waking sleeping queen
           const attackerIndex = state.players.findIndex(p => p.id === attack.attacker);
           const attacker = state.players[attackerIndex];
-          const queenIndex = newSleepingQueens.findIndex(q => q.id === (attack.targetQueen as any).id);
+          const targetQueen = attack.targetQueen as Queen;
+          const queenIndex = newSleepingQueens.findIndex(q => q.id === targetQueen.id);
 
           if (queenIndex !== -1) {
             const [queen] = newSleepingQueens.splice(queenIndex, 1);
@@ -632,15 +667,18 @@ export class GameOrchestrator {
         const hasCatQueen = newQueens.some(q => q.name === 'Cat Queen');
         const hasDogQueen = newQueens.some(q => q.name === 'Dog Queen');
         let finalQueens = newQueens;
+        let conflictMessage = '';
 
         if (hasCatQueen && hasDogQueen) {
           // Keep the older queen, return the newer one
           if (queen.name === 'Dog Queen') {
             finalQueens = finalQueens.filter(q => q.name !== 'Dog Queen');
             newSleepingQueens.push({ ...queen, isAwake: false });
+            conflictMessage = ' But Cat Queen and Dog Queen can\'t be together! Dog Queen went back to sleep!';
           } else if (queen.name === 'Cat Queen') {
             finalQueens = finalQueens.filter(q => q.name !== 'Cat Queen');
             newSleepingQueens.push({ ...queen, isAwake: false });
+            conflictMessage = ' But Cat Queen and Dog Queen can\'t be together! Cat Queen went back to sleep!';
           }
         }
 
@@ -651,11 +689,23 @@ export class GameOrchestrator {
           score: finalQueens.reduce((sum, q) => sum + q.points, 0)
         };
 
+        const bonusMessage = conflictMessage
+          ? `${player.name} woke ${queen.name} (${queen.points} points) as Rose Queen bonus!${conflictMessage}`
+          : `${player.name} woke ${queen.name} (${queen.points} points) as Rose Queen bonus!`;
+
         return {
           ...state,
           players: newPlayers,
           sleepingQueens: newSleepingQueens,
           roseQueenBonus: state.roseQueenBonus ? { ...state.roseQueenBonus, pending: false } : undefined,
+          lastAction: {
+            playerId: move.playerId,
+            playerName: player.name,
+            actionType: 'play_king',
+            cards: [],
+            message: bonusMessage,
+            timestamp: Date.now()
+          },
           updatedAt: Date.now(),
           version: state.version + 1
         };
@@ -688,7 +738,7 @@ export class GameOrchestrator {
       for (let i = 0; i < cardsNeeded; i++) {
         // Reshuffle if deck is empty
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
-          newDeck = this.shuffleCards([...newDiscardPile]);
+          newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
           newDiscardPile = [];
         }
 
@@ -709,12 +759,4 @@ export class GameOrchestrator {
     };
   }
 
-  private shuffleCards(cards: any[]): any[] {
-    const shuffled = [...cards];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 }
