@@ -35,14 +35,20 @@ export class PlayDiscardCommand implements Command<GameState> {
     }
 
     // Check for valid discard combinations
-    if (cards.length === 2) {
-      // Must be a pair
+    if (cards.length === 1) {
+      // Single cards can always be discarded
+      return { isValid: true };
+    } else if (cards.length === 2) {
+      // Two cards must be a matching pair of number cards
       if (cards[0].type !== 'number' || cards[1].type !== 'number') {
         return { isValid: false, error: 'Can only discard pairs of number cards' };
       }
       if ((cards[0] as any).value !== (cards[1] as any).value) {
         return { isValid: false, error: 'Cards must be a matching pair' };
       }
+    } else {
+      // More than 2 cards not allowed for basic discard
+      return { isValid: false, error: 'Can only discard 1 card or a matching pair' };
     }
 
     return { isValid: true };
@@ -117,7 +123,8 @@ export class PlayDiscardCommand implements Command<GameState> {
         message: `${player.name} ${message} and drew ${cards.length} new card${cards.length > 1 ? 's' : ''}`,
         timestamp: Date.now()
       },
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      version: this.state.version + 1
     };
   }
 

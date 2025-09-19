@@ -1,4 +1,7 @@
 import {Player} from '../domain/models/Player';
+import {gameLogger} from '../lib/logger';
+
+const logger = gameLogger.child({ service: 'MoveFormatter' });
 
 /**
  * Service for formatting game moves into human-readable messages.
@@ -19,7 +22,7 @@ export class MoveFormatter {
    */
   formatMove(move: any, players: Player[]): string | null {
     const playerName = players.find(p => p.id === move.playerId)?.name || 'Unknown';
-    
+
     switch (move.type) {
       case 'play_king':
         return this.formatKingMove(move, playerName);
@@ -54,15 +57,18 @@ export class MoveFormatter {
         return null;
       
       default:
-        console.log('Unhandled move type:', move.type, move);
+        logger.warn({ moveType: move.type, move }, 'Unhandled move type');
         return `${playerName} made a move`;
     }
   }
 
   private formatKingMove(move: any, playerName: string): string {
-    if (!move.targetCard) return `${playerName} played a King`;
-    
     const kingName = move.cards && move.cards[0] ? (move.cards[0].name || 'King') : 'King';
+
+    if (!move.targetCard) {
+      return `${playerName} played the ${kingName} to wake up a Queen`;
+    }
+
     return `${playerName} used the ${kingName} to wake up the ${move.targetCard.name}`;
   }
 

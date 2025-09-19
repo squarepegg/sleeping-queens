@@ -22,7 +22,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
   execute(): GameState {
     // Check if this is for stealing an opponent's queen
-    const targetPlayerId = this.move.targetPlayerId || this.move.targetPlayer;
+    const targetPlayerId = this.move.targetPlayer;
     const targetQueenId = this.move.targetQueenId || this.move.targetQueen || this.move.targetCard?.id;
 
     if (targetPlayerId && targetQueenId) {
@@ -95,12 +95,19 @@ export class PlayPotionCommand implements Command<GameState> {
       const newPlayers = [...this.state.players];
       newPlayers[playerIndex] = { ...player, hand: newHand };
 
+      // Clear staged cards when creating pending attack
+      const clearedStagedCards = { ...this.state.stagedCards };
+      if (clearedStagedCards && clearedStagedCards[this.move.playerId]) {
+        delete clearedStagedCards[this.move.playerId];
+      }
+
       return {
         ...this.state,
         players: newPlayers,
         deck: newDeck,
         discardPile: newDiscardPile,
         pendingPotionAttack: pendingAttack,
+        stagedCards: clearedStagedCards,
         lastAction: {
           playerId: this.move.playerId,
           playerName: player.name,
@@ -149,12 +156,27 @@ export class PlayPotionCommand implements Command<GameState> {
         return p;
       });
 
+      // Clear staged cards when potion is played
+      const clearedStagedCards = { ...this.state.stagedCards };
+      if (clearedStagedCards && clearedStagedCards[this.move.playerId]) {
+        delete clearedStagedCards[this.move.playerId];
+      }
+
       return {
         ...this.state,
         players: updatedPlayers,
         sleepingQueens: newSleepingQueens,
         deck: newDeck,
         discardPile: newDiscardPile,
+        stagedCards: clearedStagedCards,
+        lastAction: {
+          playerId: this.move.playerId,
+          playerName: player.name,
+          actionType: 'play_potion',
+          cards: [potionCard],
+          message: `${player.name} used Sleeping Potion to put ${targetPlayer.name}'s ${targetQueen.name} to sleep!`,
+          timestamp: Date.now()
+        },
         updatedAt: Date.now(),
         version: this.state.version + 1
       };

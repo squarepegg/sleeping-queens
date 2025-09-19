@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, PlayCircle, AlertCircle, Sparkles, Clock } from 'lucide-react';
-import { Card } from '@/domain/models/Card';
-// Card display will be handled inline
+import { X,Sparkles, Clock } from 'lucide-react';
+import {Card, isNumberCard} from '@/domain/models/Card';
 
 interface StagingDrawerProps {
   isOpen: boolean;
@@ -20,8 +19,6 @@ export const StagingDrawer: React.FC<StagingDrawerProps> = ({
   isOpen,
   cards,
   message,
-  actionLabel = 'Confirm',
-  onConfirm,
   onCancel,
   timeRemaining,
   playerName,
@@ -115,7 +112,7 @@ export const StagingDrawer: React.FC<StagingDrawerProps> = ({
                           <div className="relative bg-gray-800/80 backdrop-blur-sm border border-gray-700 rounded-lg p-3">
                             <div className="text-center">
                               <div className="text-2xl font-bold text-white">{card.type}</div>
-                              {'value' in card && (
+                              {isNumberCard(card) && (
                                 <div className="text-lg text-gray-300 mt-1">{card.value}</div>
                               )}
                               {'name' in card && (

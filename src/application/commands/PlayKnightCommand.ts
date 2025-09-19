@@ -34,7 +34,7 @@ export class PlayKnightCommand implements Command<GameState> {
 
     const cardId = this.move.cardId || this.move.cards?.[0]?.id;
     const targetQueenId = this.move.targetQueenId || this.move.targetQueen || this.move.targetCard?.id;
-    const targetPlayerId = this.move.targetPlayerId || this.move.targetPlayer;
+    const targetPlayerId = this.move.targetPlayer;
 
     if (!cardId || !targetQueenId || !targetPlayerId) {
       throw new Error('Invalid move parameters');

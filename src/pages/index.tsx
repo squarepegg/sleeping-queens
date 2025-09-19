@@ -44,8 +44,8 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col items-center justify-center p-3 sm:p-4 safe-padding">
+        <div className="w-full max-w-sm sm:max-w-md container-responsive">
           {/* Hero Section */}
           <motion.div
             initial={{ opacity: 0, y: -50 }}
@@ -53,19 +53,19 @@ export default function Home() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="text-center mb-8"
           >
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mb-6 shadow-xl">
-              <Crown className="h-10 w-10 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mb-4 sm:mb-6 shadow-xl">
+              <Crown className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
             </div>
-            
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-medieval">
+
+            <h1 className="text-3xl-responsive sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 font-medieval">
               Sleeping Queens
             </h1>
-            
-            <p className="text-xl text-purple-200 mb-2">
+
+            <p className="text-lg-responsive sm:text-xl text-purple-200 mb-2">
               Wake the queens and win the game!
             </p>
-            
-            <p className="text-gray-300 text-sm">
+
+            <p className="text-gray-300 text-sm-responsive sm:text-sm">
               A magical multiplayer card game for 2-5 players
             </p>
           </motion.div>
@@ -76,19 +76,19 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
           >
-            <Card variant="glass" className="p-6">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-2">
+            <Card variant="glass" className="p-4 sm:p-6">
+              <div className="text-center mb-4 sm:mb-6">
+                <h2 className="text-xl-responsive sm:text-2xl font-semibold text-white mb-2">
                   Enter the Kingdom
                 </h2>
-                <p className="text-gray-300 text-sm">
+                <p className="text-gray-300 text-xs sm:text-sm">
                   Choose a username to begin your magical adventure
                 </p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-200 mb-2">
+                  <label htmlFor="username" className="block text-sm-responsive sm:text-sm font-medium text-gray-200 mb-1 sm:mb-2">
                     Username
                   </label>
                   <input
@@ -97,13 +97,14 @@ export default function Home() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="game-input"
+                    className="game-input touch-target"
                     maxLength={20}
                     minLength={2}
                     required
                     disabled={loading || isLoggingIn}
+                    autoComplete="username"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs-responsive sm:text-xs text-gray-400 mt-1">
                     Must be at least 2 characters long
                   </p>
                 </div>
@@ -137,18 +138,18 @@ export default function Home() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
-            className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4"
+            className="mt-6 sm:mt-8 grid grid-cols-2 gap-3 sm:gap-4"
           >
-            <Card variant="glass" padding="sm" className="text-center">
-              <Users className="h-8 w-8 text-purple-300 mx-auto mb-2" />
-              <h3 className="font-semibold text-white text-sm mb-1">Multiplayer</h3>
-              <p className="text-xs text-gray-300">Play with 2-5 friends online</p>
+            <Card variant="glass" padding="sm" className="text-center p-3 sm:p-4">
+              <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-300 mx-auto mb-1 sm:mb-2" />
+              <h3 className="font-semibold text-white text-xs sm:text-sm mb-1">Multiplayer</h3>
+              <p className="text-xs-responsive sm:text-xs text-gray-300">Play with friends</p>
             </Card>
-            
-            <Card variant="glass" padding="sm" className="text-center">
-              <Sparkles className="h-8 w-8 text-pink-300 mx-auto mb-2" />
-              <h3 className="font-semibold text-white text-sm mb-1">Real-time</h3>
-              <p className="text-xs text-gray-300">Instant game updates</p>
+
+            <Card variant="glass" padding="sm" className="text-center p-3 sm:p-4">
+              <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-pink-300 mx-auto mb-1 sm:mb-2" />
+              <h3 className="font-semibold text-white text-xs sm:text-sm mb-1">Real-time</h3>
+              <p className="text-xs-responsive sm:text-xs text-gray-300">Instant updates</p>
             </Card>
           </motion.div>
 
@@ -157,9 +158,9 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.8 }}
-            className="mt-8 text-center"
+            className="mt-6 sm:mt-8 text-center"
           >
-            <p className="text-gray-400 text-xs">
+            <p className="text-gray-400 text-xs-responsive sm:text-xs">
               Built with Next.js, Supabase, and magic ✨
             </p>
           </motion.div>

@@ -14,15 +14,37 @@
 }
 
 @layer components {
+  /* Responsive card sizing system */
   .card-base {
     @apply relative bg-card-bg border-2 border-card-border rounded-lg shadow-card;
     @apply bg-card-pattern backdrop-blur-sm;
-    width: 64px;
-    height: 89px;
+    width: clamp(48px, 15vw, 80px);
+    height: clamp(67px, 21vw, 112px);
     perspective: 1000px;
   }
-  
+
+  @screen xs {
+    .card-base {
+      width: 56px;
+      height: 78px;
+    }
+  }
+
   @screen sm {
+    .card-base {
+      width: 64px;
+      height: 89px;
+    }
+  }
+
+  @screen md {
+    .card-base {
+      width: 72px;
+      height: 100px;
+    }
+  }
+
+  @screen lg {
     .card-base {
       width: 80px;
       height: 112px;
@@ -30,11 +52,32 @@
   }
   
   .card-large {
-    width: 96px;
-    height: 134px;
+    width: clamp(72px, 20vw, 120px);
+    height: clamp(100px, 28vw, 168px);
   }
-  
+
+  @screen xs {
+    .card-large {
+      width: 84px;
+      height: 117px;
+    }
+  }
+
   @screen sm {
+    .card-large {
+      width: 96px;
+      height: 134px;
+    }
+  }
+
+  @screen md {
+    .card-large {
+      width: 108px;
+      height: 151px;
+    }
+  }
+
+  @screen lg {
     .card-large {
       width: 120px;
       height: 168px;
@@ -77,7 +120,13 @@
   .wand-card {
     @apply bg-gradient-to-br from-blue-100 to-indigo-100 border-wand-blue;
   }
-  
+
+  /* Remove border and background for full image wand card */
+  .wand-card-full-image {
+    border: none !important;
+    background: none !important;
+  }
+
   .potion-card {
     @apply bg-gradient-to-br from-green-100 to-teal-100 border-potion-green;
   }
@@ -112,14 +161,135 @@
     @apply rounded-full animate-pulse-slow shadow-lg;
     @apply flex items-center justify-center text-white text-xs font-bold;
   }
+
+  /* Responsive container utilities */
+  .container-responsive {
+    @apply w-full px-4 mx-auto;
+    max-width: min(100%, 1536px);
+  }
+
+  @screen sm {
+    .container-responsive {
+      @apply px-6;
+    }
+  }
+
+  @screen md {
+    .container-responsive {
+      @apply px-8;
+    }
+  }
+
+  @screen lg {
+    .container-responsive {
+      @apply px-12;
+    }
+  }
+
+  /* Responsive grid system */
+  .grid-responsive {
+    @apply grid gap-2;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+
+  @screen sm {
+    .grid-responsive {
+      @apply gap-3;
+    }
+  }
+
+  @screen md {
+    .grid-responsive {
+      @apply gap-4;
+    }
+  }
+
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-w-touch-target min-h-touch-target;
+    @apply flex items-center justify-center;
+  }
+
+  @screen touch {
+    .touch-target {
+      @apply min-w-android-touch min-h-android-touch;
+    }
+  }
+
+  /* Responsive text utilities */
+  .text-responsive-xs { @apply text-xs-responsive; }
+  .text-responsive-sm { @apply text-sm-responsive; }
+  .text-responsive-base { @apply text-base-responsive; }
+  .text-responsive-lg { @apply text-lg-responsive; }
+  .text-responsive-xl { @apply text-xl-responsive; }
+  .text-responsive-2xl { @apply text-2xl-responsive; }
+  .text-responsive-3xl { @apply text-3xl-responsive; }
+  .text-responsive-4xl { @apply text-4xl-responsive; }
 }
 
 @layer utilities {
   .text-shadow {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   }
-  
+
   .glass-effect {
     @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  /* Safe area padding for mobile devices */
+  .safe-padding {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent text selection on interactive elements */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Smooth scrolling with momentum on touch devices */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Responsive spacing utilities */
+  .space-responsive {
+    @apply space-y-2;
+  }
+
+  @screen sm {
+    .space-responsive {
+      @apply space-y-3;
+    }
+  }
+
+  @screen md {
+    .space-responsive {
+      @apply space-y-4;
+    }
+  }
+
+  @screen lg {
+    .space-responsive {
+      @apply space-y-6;
+    }
   }
 }

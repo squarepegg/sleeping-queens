@@ -14,6 +14,8 @@ describe('Rose Queen Bonus', () => {
         {
           id: player1Id,
           name: 'Player 1',
+          position: 0,
+          isConnected: true,
           hand: [
             { id: 'king1', type: 'king' as const, name: 'King' },
             { id: 'num1', type: 'number' as const, value: 5 },
@@ -27,6 +29,8 @@ describe('Rose Queen Bonus', () => {
         {
           id: player2Id,
           name: 'Player 2',
+          position: 1,
+          isConnected: true,
           hand: [
             { id: 'king2', type: 'king' as const, name: 'King' },
             { id: 'num5', type: 'number' as const, value: 4 },
@@ -39,10 +43,10 @@ describe('Rose Queen Bonus', () => {
         }
       ],
       sleepingQueens: [
-        { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false },
-        { id: 'cat-queen', name: 'Cat Queen', points: 15, isAwake: false },
-        { id: 'dog-queen', name: 'Dog Queen', points: 15, isAwake: false },
-        { id: 'cake-queen', name: 'Cake Queen', points: 15, isAwake: false }
+        { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false },
+        { id: 'queen-cat', name: 'Cat Queen', points: 15, isAwake: false },
+        { id: 'queen-dog', name: 'Dog Queen', points: 15, isAwake: false },
+        { id: 'queen-cake', name: 'Cake Queen', points: 15, isAwake: false }
       ],
       currentPlayerIndex: 0,
       currentPlayerId: player1Id,
@@ -54,11 +58,15 @@ describe('Rose Queen Bonus', () => {
       discardPile: [],
       drawPile: [],
       stagedCards: {},
+      phase: 'playing' as const,
       gameStarted: true,
       gameId: 'test-game',
+      roomCode: 'TEST',
+      maxPlayers: 2,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      version: 1
+      version: 1,
+      winner: null
     };
 
     game = new GameEngineAdapter(initialState);
@@ -71,7 +79,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now(),
       cards: [{ id: 'king1', type: 'king', name: 'King' }],
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false }
     };
 
     const result = game.playMove(kingMove);
@@ -100,7 +108,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now(),
       cards: [{ id: 'king1', type: 'king', name: 'King' }],
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false }
     };
 
     game.playMove(kingMove);
@@ -111,7 +119,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now() + 1000,
       cards: [],
-      targetCard: { id: 'cat-queen', name: 'Cat Queen', points: 15, isAwake: false }
+      targetCard: { id: 'queen-cat', name: 'Cat Queen', points: 15, isAwake: false }
     };
 
     const result = game.playMove(bonusMove);
@@ -138,7 +146,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now(),
       cards: [{ id: 'king1', type: 'king', name: 'King' }],
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false }
     });
 
     // Use the Rose Queen bonus
@@ -147,7 +155,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now() + 1000,
       cards: [],
-      targetCard: { id: 'cat-queen', name: 'Cat Queen', points: 15, isAwake: false }
+      targetCard: { id: 'queen-cat', name: 'Cat Queen', points: 15, isAwake: false }
     });
 
     // Now player 2's turn - give them a Knight
@@ -175,7 +183,7 @@ describe('Rose Queen Bonus', () => {
       timestamp: Date.now() + 2000,
       cards: [{ id: 'knight1', type: 'knight', name: 'Knight' }],
       targetPlayer: player1Id,
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: true }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: true }
     };
 
     const result = game.playMove(knightMove);
@@ -201,7 +209,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now(),
       cards: [{ id: 'king1', type: 'king', name: 'King' }],
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false }
     });
 
     // Player 2 tries to use the Rose Queen bonus (should fail)
@@ -210,7 +218,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player2Id,
       timestamp: Date.now() + 1000,
       cards: [],
-      targetCard: { id: 'cat-queen', name: 'Cat Queen', points: 15, isAwake: false }
+      targetCard: { id: 'queen-cat', name: 'Cat Queen', points: 15, isAwake: false }
     };
 
     const result = game.playMove(invalidBonusMove);
@@ -225,7 +233,7 @@ describe('Rose Queen Bonus', () => {
       playerId: player1Id,
       timestamp: Date.now(),
       cards: [{ id: 'king1', type: 'king', name: 'King' }],
-      targetCard: { id: 'rose-queen', name: 'Rose Queen', points: 5, isAwake: false }
+      targetCard: { id: 'queen-rose', name: 'Rose Queen', points: 5, isAwake: false }
     });
 
     let state = game.getState();

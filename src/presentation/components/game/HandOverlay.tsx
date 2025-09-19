@@ -25,8 +25,10 @@ export const HandOverlay: React.FC<HandOverlayProps> = ({
     const cardTypes = cards.map(c => c.type);
 
     if (cardTypes.includes('king')) {
+      const kingCard = cards.find(c => c.type === 'king');
+      const kingName = kingCard && 'name' in kingCard ? kingCard.name : 'King';
       return {
-        title: 'King Ready',
+        title: kingName || 'King Ready',
         instruction: 'Click a sleeping queen above to wake her',
         icon: '👑'
       };
@@ -159,12 +161,6 @@ export const HandOverlay: React.FC<HandOverlayProps> = ({
             >
               <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
               <span className="text-white font-medium">{instruction}</span>
-              <motion.div
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              >
-                <ArrowRight className="w-5 h-5 text-blue-300" />
-              </motion.div>
             </motion.div>
 
             {/* Cancel button if provided */}

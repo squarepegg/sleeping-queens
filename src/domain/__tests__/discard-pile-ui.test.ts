@@ -3,7 +3,7 @@ import {GameMove} from '../../domain/models/GameMove';
 
 describe('Discard Pile UI Features', () => {
   test('should show last discarded card on top of discard pile', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -56,7 +56,7 @@ describe('Discard Pile UI Features', () => {
   });
 
   test('should show multiple cards in discard pile with last card on top', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -121,7 +121,7 @@ describe('Discard Pile UI Features', () => {
   });
 
   test('should handle empty discard pile gracefully', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

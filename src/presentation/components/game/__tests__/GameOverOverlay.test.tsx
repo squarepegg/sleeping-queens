@@ -109,7 +109,7 @@ describe('GameOverOverlay', () => {
 
       await waitFor(() => {
         expect(confettiMock).toHaveBeenCalled();
-      });
+      }, { timeout: 1500 }); // Increased timeout since confetti is delayed by 800ms
     });
 
     it('should display crown icon for winner', () => {

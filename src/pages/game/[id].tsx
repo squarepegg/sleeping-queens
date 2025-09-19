@@ -4,7 +4,7 @@ import Head from 'next/head';
 import {useAuth} from '../../lib/hooks/useAuth';
 import {GameLobby} from '../../presentation/components/lobby/GameLobby';
 import {GameStateProvider, useGameState} from '../../lib/context/GameStateContext';
-import {NewGameBoard} from '../../presentation/components/game/NewGameBoard';
+import {GameBoard} from '../../presentation/components/game/GameBoard';
 
 // Component to display game state for debugging
 function GameStateDisplay() {
@@ -87,11 +87,15 @@ function GameContent() {
     // Check game phase and render appropriate component
     if (state.gameState.phase === 'waiting') {
         console.log('[GameContent] Rendering GameLobby for waiting phase');
-        return <GameLobby />;
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+                <GameLobby />
+            </div>
+        );
     } else if (state.gameState.phase === 'playing' || state.gameState.phase === 'ended') {
         // Show the game board even when ended - GameOverOverlay will handle the end state
-        console.log('[GameContent] Rendering NewGameBoard for phase:', state.gameState.phase);
-        return <NewGameBoard />;
+        console.log('[GameContent] Rendering GameBoard for phase:', state.gameState.phase);
+        return <GameBoard />;
     }
 
     // Fallback for unknown phase

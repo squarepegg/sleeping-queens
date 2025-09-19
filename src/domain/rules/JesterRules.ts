@@ -7,7 +7,7 @@ export class JesterRules {
     // Special case: if there's a jester reveal waiting for queen selection
     if (state.jesterReveal?.waitingForQueenSelection) {
       // Check if this player is the one who should select
-      if (move.playerId !== state.jesterReveal.targetPlayerId) {
+      if (move.playerId !== state.jesterReveal.targetPlayer) {
         return { isValid: false, error: 'Only the target player can select a queen' };
       }
       // For queen selection, we need a targetCard

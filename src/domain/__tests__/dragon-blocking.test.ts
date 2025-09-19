@@ -2,7 +2,7 @@ import {GameEngineAdapter} from '../../application/adapters/GameEngineAdapter';
 
 describe('Dragon Blocking Mechanism', () => {
   test('should allow Dragon to block Knight attack', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -36,7 +36,7 @@ describe('Dragon Blocking Mechanism', () => {
   });
 
   test('should complete Knight attack when Dragon not played', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -58,7 +58,7 @@ describe('Dragon Blocking Mechanism', () => {
   });
 
   test('should allow attack to proceed if player chooses not to block', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

@@ -1,11 +1,16 @@
 import type {NextApiRequest, NextApiResponse} from 'next';
 import {supabase} from '../../../../lib/supabase';
+import {apiLogger, withLogger} from '../../../../lib/logger';
 
-export default async function handler(
+const logger = apiLogger.child({ endpoint: 'debug' });
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const log = (req as any).log || logger;
   if (req.method !== 'GET') {
+    log.warn({ method: req.method }, 'Invalid HTTP method');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -13,8 +18,11 @@ export default async function handler(
     const { id: gameId } = req.query;
 
     if (!gameId || typeof gameId !== 'string') {
+      log.warn({ gameId }, 'Invalid game ID');
       return res.status(400).json({ error: 'Game ID is required' });
     }
+
+    log.info({ gameId }, 'Fetching debug info')
 
     // Get the raw game state from database
     const { data: gameData, error: gameError } = await supabase
@@ -24,6 +32,7 @@ export default async function handler(
       .single();
 
     if (gameError || !gameData) {
+      log.warn({ gameId, error: gameError }, 'Game not found');
       return res.status(404).json({ error: 'Game not found' });
     }
 
@@ -52,9 +61,19 @@ export default async function handler(
       rawQueensSize: JSON.stringify(gameState.sleepingQueens || []).length
     };
 
+    log.debug({
+      gameId,
+      sleepingQueensCount: debugInfo.sleepingQueensCount,
+      playersCount: debugInfo.playersCount,
+      deckCount: debugInfo.deckCount,
+      phase: debugInfo.phase
+    }, 'Debug info retrieved');
+
     res.status(200).json(debugInfo);
   } catch (error) {
-    console.error('Debug endpoint error:', error);
+    log.error({ error, gameId }, 'Debug endpoint error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withLogger(handler);

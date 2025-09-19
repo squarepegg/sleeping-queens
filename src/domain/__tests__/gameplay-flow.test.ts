@@ -10,7 +10,7 @@ describe('Sleeping Queens - Complete Gameplay Flow Tests', () => {
   let game: GameEngineAdapter;
 
   beforeEach(() => {
-    game = new GameEngineAdapter();
+    game = new GameEngineAdapter({ testMode: true });
     
     // Add two players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -211,7 +211,7 @@ describe('Sleeping Queens - Complete Gameplay Flow Tests', () => {
       expect(newState.jesterReveal.waitingForQueenSelection).toBe(true);
       // Counting starts at 1 (yourself), so value 2 = next player
       // With 2 players: (0 + 2 - 1) % 2 = 1 (Bob)
-      expect(newState.jesterReveal.targetPlayerId).toBe('bob');
+      expect(newState.jesterReveal.targetPlayer).toBe('bob');
       
       console.log('Jester reveal state:', newState.jesterReveal);
     });

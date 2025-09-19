@@ -24,12 +24,16 @@ export class GameEngineAdapter {
   private orchestrator: GameOrchestrator;
   private repository: InMemoryGameRepository;
   private readonly eventBus: SimpleEventBus;
+  private readonly isTestMode: boolean;
 
-  constructor(initialState?: Partial<GameState>) {
+  constructor(initialState?: Partial<GameState> & {testMode?: boolean}) {
     // Initialize infrastructure
     this.eventBus = new SimpleEventBus();
     this.repository = new InMemoryGameRepository();
     this.orchestrator = new GameOrchestrator(this.eventBus);
+
+    // Extract test mode flag
+    this.isTestMode = initialState?.testMode || false;
 
     // Initialize game state
     if (initialState && initialState.id) {
@@ -168,27 +172,37 @@ export class GameEngineAdapter {
       };
     });
 
+    // Select the first player - deterministic in test mode, random otherwise
+    const randomFirstPlayerIndex = this.isTestMode
+      ? 0  // Always start with first player in test mode
+      : Math.floor(Math.random() * this.gameState.players.length);
+    const firstPlayerId = this.gameState.players[randomFirstPlayerIndex].id;
+    const firstPlayerName = this.gameState.players[randomFirstPlayerIndex].name;
+
     // Create new state with dealt cards
     this.gameState = {
       ...this.gameState,
       players: newPlayers,
       deck: newDeck,
-      currentPlayerIndex: 0,
-      currentPlayerId: this.gameState.players[0].id,
+      currentPlayerIndex: randomFirstPlayerIndex,
+      currentPlayerId: firstPlayerId,
       phase: 'playing' as const,
       updatedAt: Date.now()
     };
 
     this.repository.save(this.gameState);
+
     testDebugLogger.logState('Game started successfully', {
       phase: this.gameState.phase,
       currentPlayer: this.gameState.currentPlayerId,
-      playerCount: this.gameState.players.length
+      playerCount: this.gameState.players.length,
+      firstPlayer: firstPlayerName
     });
     // Log first turn
-    testDebugLogger.logTurn(`First turn: ${this.gameState.players[0].name}`, {
+    testDebugLogger.logTurn(`First turn: ${firstPlayerName} (randomly selected)`, {
       currentPlayer: this.gameState.currentPlayerId,
-      playerName: this.gameState.players[0].name
+      playerName: firstPlayerName,
+      playerIndex: randomFirstPlayerIndex
     });
     return true;
   }
@@ -292,6 +306,7 @@ export class GameEngineAdapter {
     }
 
     const move: GameMove = {
+      moveId: `${targetId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'allow_knight_attack',
       playerId: targetId,
       cards: [],
@@ -309,9 +324,11 @@ export class GameEngineAdapter {
       return { isValid: false, error: 'No pending potion attack' };
     }
 
+    const attackerId = this.gameState.pendingPotionAttack.attacker;
     const move: GameMove = {
+      moveId: `${attackerId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'allow_potion_attack',
-      playerId: this.gameState.pendingPotionAttack.attacker,
+      playerId: attackerId,
       cards: [],
       timestamp: Date.now()
     };

@@ -90,7 +90,7 @@ export class PlayJesterCommand implements Command<GameState> {
 
       jesterReveal = {
         revealedCard,
-        targetPlayerId: targetPlayer.id,
+        targetPlayer: targetPlayer.id,
         originalPlayerId: this.move.playerId,
         waitingForQueenSelection: true
       };
@@ -103,7 +103,7 @@ export class PlayJesterCommand implements Command<GameState> {
       newHand.push(revealedCard);
       jesterReveal = {
         revealedCard,
-        targetPlayerId: this.move.playerId, // Player who revealed keeps the card
+        targetPlayer: this.move.playerId, // Player who revealed keeps the card
         originalPlayerId: this.move.playerId,
         waitingForQueenSelection: false, // Not waiting, just revealed for message
         powerCardRevealed: true // Flag to indicate this was a power card reveal
@@ -156,7 +156,7 @@ export class PlayJesterCommand implements Command<GameState> {
     }
 
     // The player who gets the queen is determined by the jester reveal, not who sent the move
-    const targetPlayerId = this.state.jesterReveal?.targetPlayerId || this.move.playerId;
+    const targetPlayerId = this.state.jesterReveal?.targetPlayer || this.move.playerId;
     const targetPlayerIndex = this.state.players.findIndex(p => p.id === targetPlayerId);
     const targetPlayer = this.state.players[targetPlayerIndex];
 

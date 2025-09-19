@@ -3,7 +3,7 @@ import {GameMove} from '../../domain/models/GameMove';
 
 describe('Potion Queen Selection UI Fix', () => {
   test('should allow queen selection after potion is staged', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -38,7 +38,7 @@ describe('Potion Queen Selection UI Fix', () => {
   });
 
   test('should handle multiple staged potions correctly', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players  
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

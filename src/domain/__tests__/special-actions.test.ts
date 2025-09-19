@@ -6,7 +6,7 @@ describe('Special Actions - Players Acting Out of Turn', () => {
   let game: GameEngineAdapter;
 
   beforeEach(() => {
-    game = new GameEngineAdapter();
+    game = new GameEngineAdapter({ testMode: true });
     game.addPlayer({ id: 'p1', name: 'Alice', isConnected: true, position: 0, hand: [], queens: [], score: 0 });
     game.addPlayer({ id: 'p2', name: 'Bob', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     game.startGame();
@@ -51,7 +51,7 @@ describe('Special Actions - Players Acting Out of Turn', () => {
       // With value 2: (0 + 2 - 1) % 2 = 1 (player2)
       const updatedState = game.getState();
       expect(updatedState.jesterReveal).toBeDefined();
-      expect(updatedState.jesterReveal?.targetPlayerId).toBe('p2');
+      expect(updatedState.jesterReveal?.targetPlayer).toBe('p2');
       expect(updatedState.jesterReveal?.waitingForQueenSelection).toBe(true);
 
       // Player2 should be able to select a queen even though it's not their turn
@@ -344,7 +344,7 @@ describe('Special Actions - Players Acting Out of Turn', () => {
       // This test validates that special action permissions work correctly
 
       // Start a fresh game for this test
-      const freshGame = new GameEngineAdapter();
+      const freshGame = new GameEngineAdapter({ testMode: true });
       freshGame.addPlayer({
         id: 'p1',
         name: 'Alice',

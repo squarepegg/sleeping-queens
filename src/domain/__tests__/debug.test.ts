@@ -3,7 +3,7 @@ import {GameMove} from '../../domain/models/GameMove';
 
 describe('Debug Game Flow', () => {
   test('should demonstrate complete king move flow', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'player1', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

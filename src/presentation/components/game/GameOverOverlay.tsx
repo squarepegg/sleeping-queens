@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Crown, Sparkles, Home } from 'lucide-react';
+import { Trophy, Crown, Home } from 'lucide-react';
 import { Player } from '@/domain/models/Player';
 import { useRouter } from 'next/router';
 import confetti from 'canvas-confetti';
@@ -25,46 +25,60 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
   useEffect(() => {
     if (!winner) return;
 
-    // Trigger confetti for the winner
-    if (isWinner) {
-      // Multiple confetti bursts
-      const duration = 3 * 1000;
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
-      function randomInRange(min: number, max: number) {
-        return Math.random() * (max - min) + min;
-      }
-
-      const interval: any = setInterval(function() {
-        const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-          return clearInterval(interval);
-        }
-
-        const particleCount = 50 * (timeLeft / duration);
-
-        // Confetti from left
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-          colors: ['#ff69b4', '#ba55d3', '#9370db', '#8a2be2', '#ffd700']
-        });
-
-        // Confetti from right
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-          colors: ['#ff69b4', '#ba55d3', '#9370db', '#8a2be2', '#ffd700']
-        });
-      }, 250);
-    }
-
     // Show content after a short delay
     setTimeout(() => setShowContent(true), 500);
+
+    // Trigger confetti for the winner AFTER the overlay has animated in
+    if (isWinner) {
+      // Delay confetti to start after the overlay animation completes
+      const confettiDelay = setTimeout(() => {
+        // Multiple confetti bursts
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = {
+          startVelocity: 30,
+          spread: 360,
+          ticks: 60,
+          zIndex: 100  // Higher z-index to appear above the overlay
+        };
+
+        function randomInRange(min: number, max: number) {
+          return Math.random() * (max - min) + min;
+        }
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+
+          // Confetti from left
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+            colors: ['#ff69b4', '#ba55d3', '#9370db', '#8a2be2', '#ffd700']
+          });
+
+          // Confetti from right
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+            colors: ['#ff69b4', '#ba55d3', '#9370db', '#8a2be2', '#ffd700']
+          });
+        }, 250);
+
+        // Clean up interval after duration
+        setTimeout(() => clearInterval(interval), duration);
+      }, 800); // Wait 800ms for overlay to fully animate in
+
+      // Clean up timeout if component unmounts
+      return () => clearTimeout(confettiDelay);
+    }
   }, [winner, isWinner]);
 
   const handleBackToLobby = () => {
@@ -119,7 +133,6 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
                       transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
                       className="absolute inset-0 flex items-center justify-center"
                     >
-                      <Sparkles className="w-32 h-32 text-yellow-300/50" />
                     </motion.div>
                   </div>
                 </motion.div>

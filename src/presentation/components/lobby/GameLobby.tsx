@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {AlertCircle, Clock, Copy, Crown, Play, UserCheck, Users} from 'lucide-react';
 import {Button} from '../ui/Button';
 import {Card} from '../ui/Card';
+import {HowToPlay} from '../shared/HowToPlay';
 import {useGameState} from '@/lib/context/GameStateContext';
 import {useAuth} from '@/lib/hooks/useAuth';
 import {GAME_CONFIG} from '@/domain/factories/CardFactory';
@@ -245,33 +246,8 @@ export function GameLobby() {
                 </div>
             </Card>
 
-            {/* Instructions Card */}
-            <Card variant="glass">
-                <h3 className="text-lg font-semibold text-white mb-3">How to Play</h3>
-                <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
-                    <div>
-                        <h4 className="font-medium text-white mb-2">Card Types:</h4>
-                        <ul className="space-y-1">
-                            <li>🟣 <strong>Queens:</strong> Collect to win points</li>
-                            <li>👑 <strong>Kings:</strong> Wake up sleeping queens</li>
-                            <li>⚔️ <strong>Knights:</strong> Steal opponents&#39; queens</li>
-                            <li>🐉 <strong>Dragons:</strong> Block knight attacks</li>
-                            <li>🧪 <strong>Potions:</strong> Put opponents&#39; queens to sleep</li>
-                            <li>🪄 <strong>Wands:</strong> Block potion attacks</li>
-                            <li>🔢 <strong>Numbers:</strong> Make math equations</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-medium text-white mb-2">How to Win:</h4>
-                        <ul className="space-y-1">
-                            <li>• Collect the required number of queens</li>
-                            <li>• OR reach the required point total</li>
-                            <li>• Different queens have different point values</li>
-                            <li>• Use strategy to protect your queens!</li>
-                        </ul>
-                    </div>
-                </div>
-            </Card>
+            {/* Instructions Card - Redesigned */}
+            <HowToPlay />
         </div>
     );
 }

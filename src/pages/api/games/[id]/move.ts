@@ -4,14 +4,21 @@ import {GameEngineAdapter as SleepingQueensGame} from '../../../../application/a
 import {GameMove} from '../../../../domain/models/GameMove';
 import {supabase} from '../../../../lib/supabase';
 import {safeUnsubscribe, subscribeWithTimeout} from '../../../../lib/utils/supabase-helpers';
+import {apiLogger, withLogger} from '../../../../lib/logger';
 
-export default async function handler(
+// Create endpoint-specific logger
+const logger = apiLogger.child({ endpoint: 'move' });
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   // Move endpoint - handles all game moves including Jester queen selection
   // Force recompilation: v3
+  const log = (req as any).log || logger;
+
   if (req.method !== 'POST') {
+    log.warn({ method: req.method }, 'Invalid HTTP method');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -20,12 +27,21 @@ export default async function handler(
     const move: GameMove = req.body;
 
     if (!gameId || typeof gameId !== 'string') {
+      log.warn('Missing or invalid game ID');
       return res.status(400).json({ error: 'Game ID is required' });
     }
 
     if (!move || !move.playerId || !move.type) {
+      log.warn({ move }, 'Invalid move data');
       return res.status(400).json({ error: 'Invalid move data' });
     }
+
+    log.info({
+      gameId,
+      playerId: move.playerId,
+      moveType: move.type,
+      cards: move.cards?.length || 0,
+    }, 'Processing move');
 
     // Get current game state
     const { data: gameData, error: gameError } = await supabase
@@ -36,29 +52,32 @@ export default async function handler(
       .single();
 
     if (gameError || !gameData) {
+      log.error({ gameId, error: gameError }, 'Game not found');
       return res.status(404).json({ error: 'Game not found' });
     }
 
     // Check if game is already finished
     if ((gameData as any).state?.winner) {
-      console.log('[move] Rejecting move - game already finished', {
+      log.warn({
         gameId,
         winner: (gameData as any).state.winner,
         attemptedMove: move.type
-      });
+      }, 'Rejecting move - game already finished');
       return res.status(400).json({
         error: 'Game has already ended',
         winner: (gameData as any).state.winner
       });
     }
 
-    // Load game engine
-    const game = new SleepingQueensGame((gameData as any).state);
+    // Ensure move has a unique ID (required for idempotency)
+    if (!move.moveId) {
+      log.error({ gameId, moveType: move.type }, 'Move missing required moveId');
+      return res.status(400).json({ error: 'Move must include a unique moveId for idempotency' });
+    }
 
     // Check for duplicate move (idempotency)
-    const moveId = `${move.playerId}-${move.timestamp}`;
-    if ((gameData as any).state.lastMoveId === moveId) {
-      console.log('[Move API] Duplicate move detected, returning current state');
+    if ((gameData as any).state.lastMoveId === move.moveId) {
+      log.info({ moveId: move.moveId, gameId }, 'Duplicate move detected, returning current state');
       return res.status(200).json({
         isValid: true,
         gameState: (gameData as any).state,
@@ -66,13 +85,22 @@ export default async function handler(
       });
     }
 
+    // Load game engine
+    const game = new SleepingQueensGame((gameData as any).state);
+
     // Validate and execute move
     const result = game.playMove(move);
 
     if (!result.isValid) {
-      return res.status(400).json({ 
+      log.warn({
+        gameId,
+        playerId: move.playerId,
+        moveType: move.type,
+        error: result.error
+      }, 'Invalid move');
+      return res.status(400).json({
         error: result.error,
-        isValid: false 
+        isValid: false
       });
     }
 
@@ -82,7 +110,7 @@ export default async function handler(
     const updatedGameState = {
       ...newGameState,
       version: ((gameData as any).state.version || 0) + 1,
-      lastMoveId: moveId,
+      lastMoveId: move.moveId,
       lastMoveBy: move.playerId
     };
 
@@ -96,7 +124,7 @@ export default async function handler(
       .eq('id', gameId);
 
     if (updateError) {
-      console.error('Database update error:', updateError);
+      log.error({ gameId, error: updateError }, 'Database update error');
       return res.status(500).json({ error: 'Failed to save game state' });
     }
 
@@ -115,18 +143,31 @@ export default async function handler(
         lastAction: updatedGameState.lastAction
       };
 
-      const { error: moveError } = await (supabase as any).from('game_moves').insert({
-        game_id: gameId,
-        player_id: (playerExists as any).id, // Use the actual player.id, not the user_id
-        move_data: moveDataWithAction,
-      });
+      // Check if move was already processed (idempotency)
+      const { data: existingMove } = await (supabase as any)
+        .from('game_moves')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('move_id', move.moveId)
+        .single();
 
-      if (moveError) {
-        console.error('Move logging error:', moveError);
-        // Continue anyway, as the main game state is saved
+      if (existingMove) {
+        log.debug({ gameId, moveId: move.moveId }, 'Move already processed (idempotent)');
+      } else {
+        const { error: moveError } = await (supabase as any).from('game_moves').insert({
+          game_id: gameId,
+          player_id: (playerExists as any).id,
+          move_id: move.moveId,
+          move_data: moveDataWithAction,
+        });
+
+        if (moveError) {
+          log.error({ gameId, error: moveError }, 'Move logging error');
+          // Continue anyway, as the main game state is saved
+        }
       }
     } else {
-      console.warn('Player not found in players table, skipping move logging');
+      log.warn({ gameId, playerId: move.playerId }, 'Player not found in players table, skipping move logging');
     }
 
     // Broadcast the updated game state to all connected clients
@@ -150,27 +191,38 @@ export default async function handler(
         });
         
         if (result === 'ok') {
-          console.log(`[Move API] Successfully broadcast move for game ${gameId}`);
+          log.debug({ gameId }, 'Successfully broadcast move');
         } else {
-          console.warn('[Move API] Broadcast may have failed, but move was processed');
+          log.warn({ gameId, result }, 'Broadcast may have failed, but move was processed');
         }
       } else {
-        console.warn('[Move API] Could not establish broadcast channel, but move was processed');
+        log.warn({ gameId }, 'Could not establish broadcast channel, but move was processed');
       }
     } catch (broadcastError) {
-      console.error('[Move API] Broadcast error (non-critical):', broadcastError);
+      log.error({ gameId, error: broadcastError }, 'Broadcast error (non-critical)');
       // Continue - the move itself was successful
     } finally {
       // Always clean up the channel
       await safeUnsubscribe(broadcastChannel);
     }
 
+    log.info({
+      gameId,
+      playerId: move.playerId,
+      moveType: move.type,
+      winner: updatedGameState.winner,
+      version: updatedGameState.version
+    }, 'Move completed successfully');
+
     res.status(200).json({
       isValid: true,
       gameState: updatedGameState,
     });
   } catch (error) {
-    console.error('Move execution error:', error);
+    log.error({ gameId: req.query.id, move: req.body, error }, 'Move execution error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+// Export with logging middleware
+export default withLogger(handler);

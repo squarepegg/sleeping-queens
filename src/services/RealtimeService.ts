@@ -1,6 +1,9 @@
 import {RealtimeChannel, RealtimeChannelSendResponse} from '@supabase/supabase-js';
-import {supabase} from '../lib/supabase';
-import {GameState} from '../domain/models/GameState';
+import {supabase} from '@/lib/supabase';
+import {GameState} from '@/domain/models/GameState';
+import {wsLogger} from '@/lib/logger';
+
+const logger = wsLogger.child({ service: 'RealtimeService' });
 
 /**
  * Centralized service for managing Supabase realtime subscriptions.
@@ -29,24 +32,24 @@ export class RealtimeService {
     // Clean up existing channel if it exists
     this.unsubscribeFromGame(gameId);
 
-    console.log(`[RealtimeService] Subscribing to game ${gameId}`);
+    logger.info({ gameId }, 'Subscribing to game');
 
     const channel = supabase
       .channel(`direct-game-${gameId}`)
       .on('broadcast', { event: 'game_update' }, ({ payload }) => {
-        console.log('[RealtimeService] Received game_update:', payload);
+        logger.debug({ gameId, payloadSize: JSON.stringify(payload).length }, 'Received game_update');
         if (payload.gameState) {
           onGameUpdate(payload.gameState);
         }
       })
       .on('broadcast', { event: 'player_joined' }, ({ payload }) => {
-        console.log('[RealtimeService] Received player_joined:', payload);
+        logger.debug({ gameId, payload }, 'Received player_joined');
         if (onPlayerJoined) {
           onPlayerJoined(payload);
         }
       })
       .subscribe((status) => {
-        console.log(`[RealtimeService] Game ${gameId} subscription status:`, status);
+        logger.info({ gameId, status }, 'Subscription status changed');
         if (onConnectionChange) {
           switch (status) {
             case 'SUBSCRIBED':
@@ -77,7 +80,7 @@ export class RealtimeService {
   async unsubscribeFromGame(gameId: string): Promise<void> {
     const existingChannel = this.channels.get(gameId);
     if (existingChannel) {
-      console.log(`[RealtimeService] Unsubscribing from game ${gameId}`);
+      logger.info({ gameId }, 'Unsubscribing from game');
       await existingChannel.unsubscribe();
       this.channels.delete(gameId);
     }
@@ -89,15 +92,29 @@ export class RealtimeService {
   async broadcastGameUpdate(gameId: string, gameState: GameState): Promise<boolean> {
     // Try to use existing channel first
     let channel = this.channels.get(gameId);
+    let isTemporary = false;
 
     // If no existing channel, create a temporary one for broadcasting
     if (!channel) {
-      console.log(`[RealtimeService] Creating temporary channel for broadcast to game ${gameId}`);
+      logger.debug({ gameId }, 'Creating temporary channel for broadcast');
       channel = supabase.channel(`direct-game-${gameId}`);
+      isTemporary = true;
+
+      // Subscribe the temporary channel before sending
+      await new Promise<void>((resolve) => {
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            resolve();
+          }
+        });
+
+        // Timeout after 3 seconds
+        setTimeout(() => resolve(), 3000);
+      });
     }
 
     try {
-      console.log(`[RealtimeService] Broadcasting game update for ${gameId}`);
+      logger.debug({ gameId }, 'Broadcasting game update');
       const result: RealtimeChannelSendResponse = await channel.send({
         type: 'broadcast',
         event: 'game_update',
@@ -106,24 +123,31 @@ export class RealtimeService {
 
       const success = result === 'ok';
       if (!success) {
-        console.error('[RealtimeService] Failed to broadcast game update:', result);
+        logger.error({ gameId, result }, 'Failed to broadcast game update');
       }
 
-      // If we created a temporary channel, clean it up
-      if (!this.channels.has(gameId)) {
-        await channel.unsubscribe();
+      // If we created a temporary channel, clean it up after a delay
+      if (isTemporary) {
+        // Wait a bit to ensure the message is delivered
+        setTimeout(async () => {
+          try {
+            await channel.unsubscribe();
+          } catch (cleanupError) {
+            logger.error({ error: cleanupError, gameId }, 'Error cleaning up temporary channel');
+          }
+        }, 500);
       }
 
       return success;
     } catch (error) {
-      console.error('[RealtimeService] Error broadcasting game update:', error);
+      logger.error({ error, gameId }, 'Error broadcasting game update');
 
       // Clean up temporary channel on error
-      if (!this.channels.has(gameId)) {
+      if (isTemporary) {
         try {
           await channel.unsubscribe();
         } catch (cleanupError) {
-          console.error('[RealtimeService] Error cleaning up temporary channel:', cleanupError);
+          logger.error({ error: cleanupError, gameId }, 'Error cleaning up temporary channel');
         }
       }
 
@@ -150,11 +174,11 @@ export class RealtimeService {
 
       const success = result === 'ok';
       if (!success) {
-        console.error('[RealtimeService] Failed to broadcast player joined:', result);
+        logger.error({ gameId, playerId, result }, 'Failed to broadcast player joined');
       }
       return success;
     } catch (error) {
-      console.error('[RealtimeService] Error broadcasting player joined:', error);
+      logger.error({ error, gameId, playerId }, 'Error broadcasting player joined');
       // Ensure cleanup even on error
       await notifyChannel.unsubscribe().catch(() => {});
       return false;
@@ -179,19 +203,100 @@ export class RealtimeService {
    * Clean up all active subscriptions
    */
   async cleanup(): Promise<void> {
-    console.log('[RealtimeService] Cleaning up all subscriptions');
+    logger.info({ channelCount: this.channels.size }, 'Cleaning up all subscriptions');
     const unsubscribePromises = Array.from(this.channels.entries()).map(
       async ([gameId, channel]) => {
         try {
           await channel.unsubscribe();
         } catch (error) {
-          console.error(`[RealtimeService] Error unsubscribing from ${gameId}:`, error);
+          logger.error({ error, gameId }, 'Error unsubscribing from channel');
         }
       }
     );
 
     await Promise.all(unsubscribePromises);
     this.channels.clear();
+  }
+
+  /**
+   * Subscribe to database changes for game moves
+   */
+  subscribeToGameMoves(
+    gameId: string,
+    onNewMove: (moveData: any, playerData: any) => void,
+    onConnectionChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void
+  ): RealtimeChannel {
+    const channelKey = `moves-${gameId}`;
+
+    // Clean up existing channel if it exists
+    const existingChannel = this.channels.get(channelKey);
+    if (existingChannel) {
+      existingChannel.unsubscribe();
+      this.channels.delete(channelKey);
+    }
+
+    logger.info({ gameId }, 'Subscribing to game moves');
+
+    const channel = supabase
+      .channel(`game-moves-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'game_moves',
+          filter: `game_id=eq.${gameId}`
+        },
+        async (payload) => {
+          logger.debug({ gameId, payload }, 'New move received via realtime');
+
+          // Fetch player info for this move
+          const { data: playerData } = await supabase
+            .from('players')
+            .select('name, user_id')
+            .eq('id', payload.new.player_id)
+            .single();
+
+          onNewMove(payload.new, playerData);
+        }
+      )
+      .subscribe((status) => {
+        logger.info({ gameId, status }, 'Move subscription status changed');
+        if (onConnectionChange) {
+          switch (status) {
+            case 'SUBSCRIBED':
+              onConnectionChange('connected');
+              break;
+            case 'CHANNEL_ERROR':
+              onConnectionChange('error');
+              break;
+            case 'TIMED_OUT':
+              onConnectionChange('disconnected');
+              break;
+            case 'CLOSED':
+              onConnectionChange('disconnected');
+              break;
+            default:
+              onConnectionChange('connecting');
+          }
+        }
+      });
+
+    this.channels.set(channelKey, channel);
+    return channel;
+  }
+
+  /**
+   * Unsubscribe from game move updates
+   */
+  async unsubscribeFromGameMoves(gameId: string): Promise<void> {
+    const channelKey = `moves-${gameId}`;
+    const existingChannel = this.channels.get(channelKey);
+    if (existingChannel) {
+      logger.info({ gameId }, 'Unsubscribing from game moves');
+      await existingChannel.unsubscribe();
+      this.channels.delete(channelKey);
+    }
   }
 
   /**

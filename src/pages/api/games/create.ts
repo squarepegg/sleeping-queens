@@ -2,12 +2,18 @@ import type {NextApiRequest, NextApiResponse} from 'next';
 // MIGRATION: Using GameEngineAdapter with new clean architecture
 import {GameEngineAdapter as SleepingQueensGame} from '../../../application/adapters/GameEngineAdapter';
 import {supabase} from '../../../lib/supabase';
+import {apiLogger, withLogger} from '../../../lib/logger';
 
-export default async function handler(
+const logger = apiLogger.child({ endpoint: 'create' });
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const log = (req as any).log || logger;
+
   if (req.method !== 'POST') {
+    log.warn({ method: req.method }, 'Invalid HTTP method');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -15,8 +21,11 @@ export default async function handler(
     const { maxPlayers = 5, username, userId } = req.body;
 
     if (!username || !userId) {
+      log.warn({ username, userId }, 'Missing required fields');
       return res.status(400).json({ error: 'Username and userId are required' });
     }
+
+    log.info({ userId, username, maxPlayers }, 'Creating new game');
 
     // Create new game
     const game = new SleepingQueensGame({ maxPlayers });
@@ -34,6 +43,7 @@ export default async function handler(
     
     const playerAdded = game.addPlayer(hostPlayer);
     if (!playerAdded) {
+      log.error({ userId, username }, 'Failed to add host player to game');
       return res.status(500).json({ error: 'Failed to add host player to game' });
     }
     
@@ -53,7 +63,7 @@ export default async function handler(
       .single();
 
     if (error) {
-      console.error('Database error:', error);
+      log.error({ error, gameId: gameState.id }, 'Database error creating game');
       return res.status(500).json({ error: 'Failed to create game' });
     }
 
@@ -67,22 +77,31 @@ export default async function handler(
       } as any);
 
       if (playerError) {
-        console.warn('Player tracking insert failed:', playerError.message);
+        log.warn({ error: playerError, gameId: gameState.id }, 'Player tracking insert failed');
       }
     } catch (err) {
-      console.warn('Player tracking failed (non-critical):', err);
+      log.warn({ error: err, gameId: gameState.id }, 'Player tracking failed (non-critical)');
     }
 
     // No need to broadcast here since only the creator is in the game
     // They will subscribe to updates when they navigate to the game page
     
+    log.info({
+      gameId: gameState.id,
+      roomCode: gameState.roomCode,
+      hostId: userId,
+      playerCount: gameState.players.length
+    }, 'Game created successfully');
+
     res.status(201).json({
       gameId: gameState.id,
       roomCode: gameState.roomCode,
       gameState,
     });
   } catch (error) {
-    console.error('Create game error:', error);
+    log.error({ error, userId, username }, 'Create game error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withLogger(handler);

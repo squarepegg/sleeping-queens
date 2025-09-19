@@ -2,7 +2,7 @@ import {GameEngineAdapter} from '../../application/adapters/GameEngineAdapter';
 
 describe('Potion/Wand Blocking Mechanism', () => {
   test('should allow Wand to block Potion attack', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -36,7 +36,7 @@ describe('Potion/Wand Blocking Mechanism', () => {
   });
 
   test('should complete Potion attack when Wand not played', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -58,7 +58,7 @@ describe('Potion/Wand Blocking Mechanism', () => {
   });
 
   test('should allow attack to proceed if player chooses not to block', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

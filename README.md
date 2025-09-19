@@ -55,7 +55,21 @@ A magical, fully-featured online implementation of the beloved Sleeping Queens c
 
 3. **Set up Supabase**
    - Create a new Supabase project
-   - Run the SQL migrations from `supabase/migrations/001_create_tables.sql`
+   - Install Supabase CLI (if not already installed):
+     ```bash
+     npm install -g supabase
+     ```
+   - Link to your Supabase project:
+     ```bash
+     supabase link --project-ref your-project-ref
+     ```
+   - Run database migrations:
+     ```bash
+     npx supabase db push
+     ```
+   - Note: Migrations are located in `supabase/migrations/` and include:
+     - `001_create_tables.sql` - Creates base tables
+     - `add_move_id_column.sql` - Adds idempotency support
    - Optional: Run the seed data from `supabase/seed.sql`
 
 4. **Configure environment variables**
@@ -287,6 +301,6 @@ For questions, bug reports, or feature requests, please:
 
 ---
 
-**Made with 💜 squarepegg and AI** 
+**Made with 💜 squarepegg** 
 
 *Wake the queens, claim your victory!* 👑✨

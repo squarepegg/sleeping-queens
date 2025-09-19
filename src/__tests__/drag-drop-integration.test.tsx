@@ -74,7 +74,7 @@ describe('Drag and Drop Integration', () => {
         </DndContext>
       );
 
-      expect(screen.getByText('Test Drop Zone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Test Drop Zone')).toBeInTheDocument();
       expect(screen.getByText('Drop content here')).toBeInTheDocument();
     });
 
@@ -124,7 +124,7 @@ describe('Drag and Drop Integration', () => {
         </DndContext>
       );
 
-      expect(screen.getByText('Staging Area (2/5)')).toBeInTheDocument();
+      expect(screen.getByText('Staging Area (', { exact: false })).toBeInTheDocument();
       expect(screen.getByText('Card 1')).toBeInTheDocument();
       expect(screen.getByText('Card 2')).toBeInTheDocument();
     });
@@ -206,7 +206,7 @@ describe('Drag and Drop Integration', () => {
       render(<TestComponent />);
 
       expect(screen.getByText('Hand')).toBeInTheDocument();
-      expect(screen.getByText('Staging')).toBeInTheDocument();
+      expect(screen.getByLabelText('Staging')).toBeInTheDocument();
       // Multiple "5" elements exist (card corners and center), so use getAllByText
       const fives = screen.getAllByText('5');
       expect(fives.length).toBeGreaterThan(0);

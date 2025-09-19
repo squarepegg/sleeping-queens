@@ -25,7 +25,7 @@ export interface RoseQueenBonus {
 
 export interface JesterReveal {
   readonly revealedCard: Card;
-  readonly targetPlayerId: string;
+  readonly targetPlayer: string;
   readonly originalPlayerId: string; // Who played the jester
   readonly waitingForQueenSelection: boolean;
   readonly powerCardRevealed?: boolean; // For message generation when power card revealed

@@ -57,12 +57,6 @@ export function DroppableArea({
       )}
       aria-label={label || `Drop zone ${id}`}
     >
-      {label && (
-        <div className="absolute -top-3 left-3 px-2 bg-white text-xs font-medium text-gray-600">
-          {label}
-        </div>
-      )}
-      
       {children}
       
       {isValidDrop && (

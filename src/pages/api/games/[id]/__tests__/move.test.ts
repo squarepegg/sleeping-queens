@@ -39,14 +39,16 @@ describe('/api/games/[id]/move', () => {
     jsonMock = jest.fn();
     statusMock = jest.fn().mockReturnValue({ json: jsonMock });
 
+    const timestamp = Date.now();
     req = {
       method: 'POST',
       query: { id: 'test-game-123' },
       body: {
+        moveId: `player-1-${timestamp}-test`,
         type: 'discard',
         playerId: 'player-1',
         cards: [{ id: 'card-1', type: 'number', value: 7 }],
-        timestamp: Date.now(),
+        timestamp,
       },
     };
 
@@ -86,7 +88,7 @@ describe('/api/games/[id]/move', () => {
     });
 
     it('should reject move without playerId', async () => {
-      req.body = { type: 'discard', cards: [] };
+      req.body = { moveId: 'test-move', type: 'discard', cards: [], timestamp: Date.now() };
 
       await handler(req as NextApiRequest, res as NextApiResponse);
 
@@ -95,12 +97,35 @@ describe('/api/games/[id]/move', () => {
     });
 
     it('should reject move without type', async () => {
-      req.body = { playerId: 'player-1', cards: [] };
+      req.body = { moveId: 'test-move', playerId: 'player-1', cards: [], timestamp: Date.now() };
 
       await handler(req as NextApiRequest, res as NextApiResponse);
 
       expect(statusMock).toHaveBeenCalledWith(400);
       expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid move data' });
+    });
+
+    it('should reject move without moveId', async () => {
+      req.body = { type: 'discard', playerId: 'player-1', cards: [], timestamp: Date.now() };
+
+      const fromMock = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: { id: 'test-game-123', state: { phase: 'playing' } },
+                error: null
+              }),
+            }),
+          }),
+        }),
+      });
+      (supabase.from as jest.Mock).mockImplementation(fromMock);
+
+      await handler(req as NextApiRequest, res as NextApiResponse);
+
+      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(jsonMock).toHaveBeenCalledWith({ error: 'Move must include a unique moveId for idempotency' });
     });
   });
 
@@ -222,6 +247,13 @@ describe('/api/games/[id]/move', () => {
         }
         if (table === 'game_moves') {
           return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            }),
             insert: jest.fn().mockResolvedValue({ error: null }),
           };
         }
@@ -282,7 +314,8 @@ describe('/api/games/[id]/move', () => {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
                 eq: jest.fn().mockReturnValue({
-                  single: jest.fn().mockResolvedValue({ data: mockGameState, error: null }),
+                  single: jest.fn().mockImplementation(() =>
+                    Promise.resolve({ data: mockGameState, error: null })),
                 }),
               }),
             }),
@@ -304,6 +337,13 @@ describe('/api/games/[id]/move', () => {
         }
         if (table === 'game_moves') {
           return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            }),
             insert: jest.fn().mockResolvedValue({ error: null }),
           };
         }
@@ -337,8 +377,7 @@ describe('/api/games/[id]/move', () => {
 
     it('should handle duplicate moves (idempotency)', async () => {
       const mockGameState = setupValidGame();
-      const moveId = `player-1-${req.body!.timestamp}`;
-      mockGameState.state.lastMoveId = moveId;
+      mockGameState.state.lastMoveId = req.body!.moveId;
 
       await handler(req as NextApiRequest, res as NextApiResponse);
 
@@ -479,6 +518,13 @@ describe('/api/games/[id]/move', () => {
         }
         if (table === 'game_moves') {
           return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            }),
             insert: insertMock,
           };
         }
@@ -502,6 +548,7 @@ describe('/api/games/[id]/move', () => {
       expect(insertMock).toHaveBeenCalledWith({
         game_id: 'test-game-123',
         player_id: 'player-db-id',
+        move_id: req.body.moveId,
         move_data: expect.objectContaining({
           type: 'discard',
           playerId: 'player-1',
@@ -550,6 +597,13 @@ describe('/api/games/[id]/move', () => {
         }
         if (table === 'game_moves') {
           return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            }),
             insert: insertMock,
           };
         }

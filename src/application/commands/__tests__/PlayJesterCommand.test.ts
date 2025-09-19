@@ -40,7 +40,7 @@ describe('PlayJesterCommand - Rose Queen Bonus', () => {
       phase: 'playing',
       jesterReveal: {
         revealedCard: { id: 'number-3', type: 'number', value: 3 },
-        targetPlayerId: 'player1',
+        targetPlayer: 'player1',
         originalPlayerId: 'player1',
         waitingForQueenSelection: true
       },
@@ -107,7 +107,7 @@ describe('PlayJesterCommand - Rose Queen Bonus', () => {
       phase: 'playing',
       jesterReveal: {
         revealedCard: { id: 'number-1', type: 'number', value: 1 },
-        targetPlayerId: 'player1',
+        targetPlayer: 'player1',
         originalPlayerId: 'player1',
         waitingForQueenSelection: true
       },

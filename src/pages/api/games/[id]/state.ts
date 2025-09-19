@@ -1,11 +1,16 @@
 import type {NextApiRequest, NextApiResponse} from 'next';
 import {supabase} from '../../../../lib/supabase';
+import {apiLogger, withLogger} from '../../../../lib/logger';
 
-export default async function handler(
+const logger = apiLogger.child({ endpoint: 'state' });
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const log = (req as any).log || logger;
   if (req.method !== 'GET') {
+    log.warn({ method: req.method }, 'Invalid HTTP method');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -13,8 +18,11 @@ export default async function handler(
     const { id: gameId } = req.query;
 
     if (!gameId || typeof gameId !== 'string') {
+      log.warn({ gameId }, 'Invalid game ID');
       return res.status(400).json({ error: 'Game ID is required' });
     }
+
+    log.info({ gameId }, 'Fetching game state')
 
     // Get game state
     const { data: gameData, error: gameError } = await supabase
@@ -24,6 +32,7 @@ export default async function handler(
       .single();
 
     if (gameError || !gameData) {
+      log.warn({ gameId, error: gameError }, 'Game not found');
       return res.status(404).json({ error: 'Game not found' });
     }
 
@@ -35,7 +44,7 @@ export default async function handler(
       .order('position');
 
     if (playersError) {
-      console.error('Players fetch error:', playersError);
+      log.error({ error: playersError, gameId }, 'Players fetch error');
     }
 
     // Get recent moves for context
@@ -47,8 +56,14 @@ export default async function handler(
       .limit(10);
 
     if (movesError) {
-      console.error('Moves fetch error:', movesError);
+      log.error({ error: movesError, gameId }, 'Moves fetch error');
     }
+
+    log.debug({
+      gameId,
+      playerCount: playersData?.length || 0,
+      recentMoveCount: movesData?.length || 0
+    }, 'Game state retrieved');
 
     res.status(200).json({
       gameState: (gameData as any).state,
@@ -62,7 +77,9 @@ export default async function handler(
       },
     });
   } catch (error) {
-    console.error('Get game state error:', error);
+    log.error({ error, gameId }, 'Get game state error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withLogger(handler);

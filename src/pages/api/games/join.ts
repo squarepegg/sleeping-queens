@@ -3,12 +3,19 @@ import type {NextApiRequest, NextApiResponse} from 'next';
 import {GameEngineAdapter as SleepingQueensGame} from '../../../application/adapters/GameEngineAdapter';
 import {supabase} from '@/lib/supabase';
 import {safeUnsubscribe, subscribeWithTimeout} from '@/lib/utils/supabase-helpers';
+import {apiLogger, withLogger} from '@/lib/logger';
+import {realtimeService} from '@/services/RealtimeService';
 
-export default async function handler(
+const logger = apiLogger.child({ endpoint: 'join' });
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const log = (req as any).log || logger;
+
   if (req.method !== 'POST') {
+    log.warn({ method: req.method }, 'Invalid HTTP method');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -16,8 +23,11 @@ export default async function handler(
     const { roomCode, username, userId } = req.body;
 
     if (!roomCode || !username || !userId) {
+      log.warn({ roomCode, username, userId }, 'Missing required fields');
       return res.status(400).json({ error: 'Room code, username and userId are required' });
     }
+
+    log.info({ roomCode: roomCode.toUpperCase(), username, userId }, 'Player joining game');
 
     // Find game by room code
     const { data: gameData, error: gameError } = await supabase
@@ -27,6 +37,7 @@ export default async function handler(
       .single();
 
     if (gameError || !gameData) {
+      log.warn({ roomCode: roomCode.toUpperCase(), error: gameError }, 'Game not found');
       return res.status(404).json({ error: 'Game not found' });
     }
 
@@ -39,6 +50,7 @@ export default async function handler(
     // Check if player already in game by UUID
     const existingPlayer = game.getState().players.find(p => p.id === userId);
     if (existingPlayer) {
+      log.info({ gameId: gameRecord.id, userId }, 'Player already in game');
       return res.status(200).json({
         gameId: gameRecord.id,
         gameState: game.getState(),
@@ -58,6 +70,7 @@ export default async function handler(
     });
 
     if (!success) {
+      log.warn({ gameId: gameRecord.id, userId, playerCount: game.getState().players.length }, 'Cannot join game (full or already started)');
       return res.status(400).json({ error: 'Cannot join game (full or already started)' });
     }
 
@@ -73,7 +86,7 @@ export default async function handler(
       .eq('id', gameRecord.id));
 
     if (updateError) {
-      console.error('Database error:', updateError);
+      log.error({ error: updateError, gameId: gameRecord.id }, 'Database error updating game');
       return res.status(500).json({ error: 'Failed to join game' });
     }
 
@@ -88,60 +101,71 @@ export default async function handler(
 
       if (playerError) {
         // Log but don't fail - game state is source of truth
-        console.warn('Player tracking insert failed:', playerError.message);
+        log.warn({ error: playerError, gameId: gameRecord.id, userId }, 'Player tracking insert failed');
       }
     } catch (err) {
-      console.warn('Player tracking failed (non-critical):', err);
+      log.warn({ error: err, gameId: gameRecord.id }, 'Player tracking failed (non-critical)');
     }
 
     // Broadcast the updated game state to all connected clients
-    const broadcastChannel = supabase.channel(`direct-game-${gameRecord.id}`);
-    
+    // Use the RealtimeService for more reliable broadcasting
     try {
-      // Subscribe with timeout protection
-      const subscribed = await subscribeWithTimeout(broadcastChannel, 5000);
-      
+      // First broadcast the game state update
+      const updateSuccess = await realtimeService.broadcastGameUpdate(gameRecord.id, newGameState);
+
+      if (updateSuccess) {
+        log.debug({ gameId: gameRecord.id }, 'Successfully broadcast game update');
+      } else {
+        log.warn({ gameId: gameRecord.id }, 'Game update broadcast may have failed, but join was successful');
+      }
+
+      // Also send player joined notification
+      // Create a temporary channel for the player_joined event
+      const notifyChannel = supabase.channel(`direct-game-${gameRecord.id}`);
+      const subscribed = await subscribeWithTimeout(notifyChannel, 2000);
+
       if (subscribed) {
-        // Broadcast the game state update
-        const updateSent = await broadcastChannel.send({
-          type: 'broadcast',
-          event: 'game_update',
-          payload: { gameState: newGameState }
-        });
-        
-        // Also broadcast player joined event
-        const joinSent = await broadcastChannel.send({
+        const joinSent = await notifyChannel.send({
           type: 'broadcast',
           event: 'player_joined',
-          payload: { 
-            playerId: username,
+          payload: {
+            playerId: userId,  // Use the actual userId
             playerName: username,
-            gameId: gameRecord.id 
+            gameId: gameRecord.id
           }
         });
-        
-        if (updateSent === 'ok' && joinSent === 'ok') {
-          console.log(`[Join API] Successfully broadcast updates for game ${gameRecord.id}`);
-        } else {
-          console.warn('[Join API] Broadcast may have failed, but join was successful');
+
+        if (joinSent === 'ok') {
+          log.debug({ gameId: gameRecord.id }, 'Successfully broadcast player_joined event');
         }
-      } else {
-        console.warn('[Join API] Could not establish broadcast channel, but join was successful');
+
+        // Give the broadcast a moment to propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Clean up the notification channel
+      await safeUnsubscribe(notifyChannel);
+
     } catch (broadcastError) {
-      console.error('[Join API] Broadcast error (non-critical):', broadcastError);
+      log.error({ error: broadcastError, gameId: gameRecord.id }, 'Broadcast error (non-critical)');
       // Continue - the join itself was successful
-    } finally {
-      // Always clean up the channel
-      await safeUnsubscribe(broadcastChannel);
     }
+
+    log.info({
+      gameId: gameRecord.id,
+      userId,
+      username,
+      playerCount: newGameState.players.length
+    }, 'Player joined successfully');
 
     res.status(200).json({
       gameId: gameRecord.id,
       gameState: newGameState,
     });
   } catch (error) {
-    console.error('Join game error:', error);
+    log.error({ error, roomCode, username }, 'Join game error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withLogger(handler);

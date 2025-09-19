@@ -7,12 +7,24 @@ module.exports = {
   ],
   theme: {
     screens: {
+      // Mobile-first breakpoints
       'xs': '475px',
       'sm': '640px',
       'md': '768px',
       'lg': '1024px',
       'xl': '1280px',
       '2xl': '1536px',
+      // Device-specific breakpoints
+      'mobile': '320px',
+      'tablet': '768px',
+      'laptop': '1024px',
+      'desktop': '1280px',
+      // Orientation breakpoints
+      'portrait': { 'raw': '(orientation: portrait)' },
+      'landscape': { 'raw': '(orientation: landscape)' },
+      // Touch device detection
+      'touch': { 'raw': '(hover: none) and (pointer: coarse)' },
+      'mouse': { 'raw': '(hover: hover) and (pointer: fine)' },
     },
     extend: {
       colors: {
@@ -52,6 +64,31 @@ module.exports = {
         'card': '0 4px 8px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 8px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.1)',
         'queen': '0 0 20px rgba(255, 105, 180, 0.5)',
+      },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      fontSize: {
+        // Responsive font sizes using clamp
+        'xs-responsive': 'clamp(0.65rem, 1.5vw, 0.75rem)',
+        'sm-responsive': 'clamp(0.75rem, 2vw, 0.875rem)',
+        'base-responsive': 'clamp(0.875rem, 2.5vw, 1rem)',
+        'lg-responsive': 'clamp(1rem, 3vw, 1.125rem)',
+        'xl-responsive': 'clamp(1.125rem, 3.5vw, 1.25rem)',
+        '2xl-responsive': 'clamp(1.25rem, 4vw, 1.5rem)',
+        '3xl-responsive': 'clamp(1.5rem, 5vw, 1.875rem)',
+        '4xl-responsive': 'clamp(1.875rem, 6vw, 2.25rem)',
+      },
+      minHeight: {
+        'touch-target': '44px', // iOS minimum touch target
+        'android-touch': '48px', // Android minimum touch target
+      },
+      minWidth: {
+        'touch-target': '44px',
+        'android-touch': '48px',
       },
     },
   },

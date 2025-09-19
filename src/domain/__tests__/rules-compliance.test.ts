@@ -7,7 +7,7 @@ describe('Rules Compliance Tests', () => {
   let game: GameEngineAdapter;
 
   beforeEach(() => {
-    game = new GameEngineAdapter();
+    game = new GameEngineAdapter({ testMode: true });
     game.addPlayer({ id: 'p1', name: 'Player 1', isConnected: true, position: 0, hand: [], queens: [], score: 0 });
     game.addPlayer({ id: 'p2', name: 'Player 2', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
     game.startGame();
@@ -122,7 +122,7 @@ describe('Rules Compliance Tests', () => {
         type: 'play_knight',
         playerId: 'p1',
         cardId: knightCard.id,
-        targetPlayerId: 'p2',
+        targetPlayer: 'p2',
         targetQueenId: roseQueen.id,
         timestamp: Date.now()
       };
@@ -207,7 +207,7 @@ describe('Rules Compliance Tests', () => {
   describe('Math Equations', () => {
     it('should accept valid addition equations', () => {
       // According to official rules, only addition equations are valid
-      const game = new GameEngineAdapter();
+      const game = new GameEngineAdapter({ testMode: true });
 
       // Helper function to check if cards form a valid equation
       const isValidAdditionEquation = (numbers: number[]): boolean => {
@@ -338,7 +338,7 @@ describe('Rules Compliance Tests', () => {
         type: 'play_knight',
         playerId: 'p1',
         cardId: knightCard.id,
-        targetPlayerId: 'p2',
+        targetPlayer: 'p2',
         targetQueenId: queen.id,
         timestamp: Date.now()
       };
@@ -384,7 +384,7 @@ describe('Rules Compliance Tests', () => {
         type: 'play_knight',
         playerId: 'p1',
         cardId: knightCard.id,
-        targetPlayerId: 'p2',
+        targetPlayer: 'p2',
         targetQueenId: queen.id,
         timestamp: Date.now()
       };
@@ -477,7 +477,7 @@ describe('Rules Compliance Tests', () => {
       // With value 2: (0 + 2 - 1) % 2 = 1 % 2 = 1 (player2)
       const newState = game.getState();
       expect(newState.jesterReveal).toBeDefined();
-      expect(newState.jesterReveal?.targetPlayerId).toBe('p2');
+      expect(newState.jesterReveal?.targetPlayer).toBe('p2');
     });
   });
 

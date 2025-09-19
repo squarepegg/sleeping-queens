@@ -3,7 +3,7 @@ import {GameMove} from '../../domain/models/GameMove';
 
 describe('Named Kings in Gameplay', () => {
   test('should show named King when discarded', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });
@@ -60,7 +60,7 @@ describe('Named Kings in Gameplay', () => {
   });
 
   test('should show different King names when multiple Kings discarded', () => {
-    const game = new GameEngineAdapter();
+    const game = new GameEngineAdapter({ testMode: true });
     
     // Add players
     game.addPlayer({ id: 'alice', name: 'Alice', isConnected: true, position: 1, hand: [], queens: [], score: 0 });

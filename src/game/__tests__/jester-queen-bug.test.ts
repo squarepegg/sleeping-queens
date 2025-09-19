@@ -76,10 +76,10 @@ describe('Jester Queen Bug', () => {
     const stateAfterJester = game.getState();
     console.log('After jester play:');
     console.log('Jester reveal:', stateAfterJester.jesterReveal);
-    console.log('Target player ID:', stateAfterJester.jesterReveal?.targetPlayerId);
+    console.log('Target player ID:', stateAfterJester.jesterReveal?.targetPlayer);
 
     // Verify jester reveal is correct (value 1 = same player)
-    expect(stateAfterJester.jesterReveal?.targetPlayerId).toBe(player1Id);
+    expect(stateAfterJester.jesterReveal?.targetPlayer).toBe(player1Id);
     expect(stateAfterJester.jesterReveal?.waitingForQueenSelection).toBe(true);
 
     // Player 1 selects a queen (they are the target)

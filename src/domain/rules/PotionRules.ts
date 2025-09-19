@@ -23,7 +23,7 @@ export class PotionRules {
     }
 
     // Check if targeting opponent's queen
-    const targetPlayerId = move.targetPlayerId || move.targetPlayer;
+    const targetPlayerId = move.targetPlayer;
     if (targetPlayerId) {
       const targetPlayer = state.players.find(p => p.id === targetPlayerId);
       if (!targetPlayer) {

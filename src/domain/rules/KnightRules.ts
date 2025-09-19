@@ -6,7 +6,7 @@ export class KnightRules {
   static validate(move: GameMove, state: GameState): MoveValidationResult {
     const cardId = move.cardId || (move.cards && move.cards[0]?.id);
     const targetQueenId = move.targetQueenId || move.targetQueen || move.targetCard?.id;
-    const targetPlayerId = move.targetPlayerId || move.targetPlayer;
+    const targetPlayerId = move.targetPlayer;
 
     if (!cardId || !targetPlayerId || !targetQueenId) {
       return { isValid: false, error: 'Knight move requires card, target player, and target queen' };

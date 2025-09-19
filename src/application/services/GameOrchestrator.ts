@@ -22,6 +22,21 @@ export class GameOrchestrator {
 
   processMove(move: GameMove, state: GameState): MoveValidationResult & { newState?: GameState } {
     try {
+      // Handle system messages - they just update lastAction
+      if ((move as any).type === 'system_message') {
+        const newState = {
+          ...state,
+          lastAction: (move as any).lastAction || {
+            playerId: 'system',
+            playerName: 'Game',
+            message: 'System event',
+            timestamp: Date.now()
+          },
+          updatedAt: Date.now()
+        };
+        return { isValid: true, newState };
+      }
+
       const command = this.createCommand(move, state);
 
       if (!command.canExecute()) {
@@ -51,15 +66,20 @@ export class GameOrchestrator {
 
       // Check for Rose Queen bonus
       if (move.type === 'play_king' && newState.roseQueenBonus?.pending) {
-        keepTurn = true;
+        keepTurn = false; // Turn should advance, but player can still act due to bonus
         message = 'You woke the Rose Queen! Select another sleeping queen to wake!';
+      }
+
+      // Rose Queen bonus move should NOT keep the turn - turn advances after selection
+      if (move.type === 'rose_queen_bonus') {
+        keepTurn = false;
       }
 
       if (move.type === 'play_jester') {
         if (newState.jesterReveal?.revealedCard?.type === 'number') {
           const numberCard = newState.jesterReveal.revealedCard as { id: string; type: 'number'; value: number };
           const value = numberCard.value || 1;
-          const targetPlayerId = newState.jesterReveal?.targetPlayerId;
+          const targetPlayerId = newState.jesterReveal?.targetPlayer;
           const targetPlayer = targetPlayerId ? newState.players.find(p => p.id === targetPlayerId) : undefined;
           message = `Revealed ${value}! ${targetPlayer?.name || 'Player'} gets to wake a queen!`;
         } else if (newState.jesterReveal?.powerCardRevealed) {
@@ -90,14 +110,18 @@ export class GameOrchestrator {
         newState = TurnManager.advanceTurn(newState);
       }
 
-      // Check win conditions
-      const winResult = WinConditions.checkWinCondition(newState);
-      if (winResult.hasWinner && winResult.winnerId) {
-        newState = {
-          ...newState,
-          phase: 'ended',
-          winner: winResult.winnerId
-        };
+      // Check win conditions - but NOT if there's a pending defense phase
+      // Win conditions should only be checked after attacks are fully resolved
+      const hasPendingDefense = newState.pendingKnightAttack || newState.pendingPotionAttack;
+      if (!hasPendingDefense) {
+        const winResult = WinConditions.checkWinCondition(newState);
+        if (winResult.hasWinner && winResult.winnerId) {
+          newState = {
+            ...newState,
+            phase: 'ended',
+            winner: winResult.winnerId
+          };
+        }
       }
 
       return { isValid: true, message, newState };
@@ -219,7 +243,7 @@ export class GameOrchestrator {
                 playerName: player.name,
                 actionType: 'play_dragon',
                 cards: [dragonCard],
-                message: `${player.name} played Dragon to block ${attacker?.name || 'attacker'}'s Knight attack on ${targetQueen?.name || 'queen'}!`,
+                message: `${player.name} played a Dragon to block ${attacker?.name || 'attacker'}'s Knight attack on ${targetQueen?.name || 'queen'}!`,
                 timestamp: Date.now()
               }
             };
@@ -260,7 +284,7 @@ export class GameOrchestrator {
                 playerName: player.name,
                 actionType: 'play_wand',
                 cards: [wandCard],
-                message: `${player.name} played Magic Wand to block ${attacker?.name || 'attacker'}'s Sleeping Potion on ${targetQueen?.name || 'queen'}!`,
+                message: `${player.name} played a Magic Wand to block ${attacker?.name || 'attacker'}'s Sleeping Potion on ${targetQueen?.name || 'queen'}!`,
                 timestamp: Date.now()
               }
             };
@@ -290,6 +314,25 @@ export class GameOrchestrator {
         if (!TurnManager.canPlayerAct(state, move.playerId)) {
           return { isValid: false, error: 'Not your turn' };
         }
+
+        // Validate the math equation
+        const cards = move.cards || [];
+        if (cards.length < 3) {
+          return { isValid: false, error: 'Math equations require at least 3 cards' };
+        }
+
+        // Check all cards are number cards
+        if (!cards.every(c => c.type === 'number')) {
+          return { isValid: false, error: 'Math equations can only use number cards' };
+        }
+
+        // Validate the equation
+        const values = cards.map((c) => (c as { value?: number }).value || 0);
+        const mathResult = validateMathEquation(values);
+        if (!mathResult.isValid) {
+          return { isValid: false, error: 'Invalid equation - cards don\'t form a valid math equation' };
+        }
+
         return { isValid: true };
       },
       canExecute: function() { return this.validate().isValid; },
@@ -585,6 +628,15 @@ export class GameOrchestrator {
     // Check if this move requires waiting for response (defense, etc.)
     if (state.pendingKnightAttack || state.pendingPotionAttack) {
       return true;
+    }
+
+    // Check if there's a Rose Queen bonus pending
+    if (state.roseQueenBonus?.pending) {
+      // If this is the rose queen bonus move, it's NOT special (turn should advance after)
+      if (move.type === 'rose_queen_bonus') {
+        return false;
+      }
+      return true; // Still waiting for queen selection
     }
 
     // For jester moves, check if this is still waiting for queen selection

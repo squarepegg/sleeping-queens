@@ -1,6 +1,8 @@
 import {useCallback, useEffect, useState} from 'react';
 import {Player} from '@/domain/models/Player';
 import {LastAction} from '@/domain/models/GameState';
+import {realtimeService} from '@/services/RealtimeService';
+import {moveFormatter} from '@/services/MoveFormatter';
 
 interface MoveHistoryEntry {
   message: string;
@@ -13,6 +15,7 @@ interface UseMoveHistoryResult {
   moveHistory: MoveHistoryEntry[];
   addMoveToHistory: (message: string, playerId: string) => void;
   clearHistory: () => void;
+  reloadHistory: () => void;
   isLoading: boolean;
 }
 
@@ -50,63 +53,107 @@ export function useMoveHistory(
     setHasLoadedHistory(false);
   }, []);
 
-  // Load historical moves from database when game loads
+  // Reload history from database
+  const reloadHistory = useCallback(() => {
+    setHasLoadedHistory(false);
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    if (!gameId) return;
+    console.log('[useMoveHistory] Loading history for game:', gameId);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/games/${gameId}/history?limit=50`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[useMoveHistory] History loaded:', data);
+
+        // Convert the API response to our format - API already returns newest first
+        const historicalMoves: MoveHistoryEntry[] = (data.moves || [])
+          .map((move: any) => ({
+            message: move.message,
+            timestamp: move.timestamp,
+            playerId: move.playerId,
+            playerName: move.playerName
+          }));
+
+        console.log('[useMoveHistory] Formatted moves:', historicalMoves);
+        setMoveHistory(historicalMoves);
+
+        // Set the last processed timestamp to avoid re-processing these moves
+        if (historicalMoves.length > 0) {
+          const latestTimestamp = Math.max(...historicalMoves.map(m => m.timestamp));
+          setLastProcessedTimestamp(latestTimestamp);
+        }
+
+        setHasLoadedHistory(true);
+      }
+    } catch (error) {
+      console.error('Failed to load move history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [gameId]);
+
+
+  // Load initial history when game loads
   useEffect(() => {
     if (!gameId || hasLoadedHistory) return;
-
-    const loadHistory = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`/api/games/${gameId}/history?limit=50`);
-        if (response.ok) {
-          const data = await response.json();
-
-          // Convert the API response to our format - API already returns newest first
-          const historicalMoves: MoveHistoryEntry[] = (data.moves || [])
-            .map((move: any) => ({
-              message: move.message,
-              timestamp: move.timestamp,
-              playerId: move.playerId,
-              playerName: move.playerName
-            }));
-
-          setMoveHistory(historicalMoves);
-
-          // Set the last processed timestamp to avoid re-processing these moves
-          if (historicalMoves.length > 0) {
-            const latestTimestamp = Math.max(...historicalMoves.map(m => m.timestamp));
-            setLastProcessedTimestamp(latestTimestamp);
-          }
-
-          setHasLoadedHistory(true);
-        }
-      } catch (error) {
-        console.error('Failed to load move history:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadHistory();
-  }, [gameId, hasLoadedHistory]);
+  }, [gameId, hasLoadedHistory, loadHistory]);
 
-  // Track lastAction changes and add to history
+  // Subscribe to realtime updates via centralized service
   useEffect(() => {
-    if (!lastAction || !hasLoadedHistory || !gameId) return;
+    if (!gameId) return;
 
-    // Check if this is a new action we haven't processed
-    if (lastAction.timestamp > lastProcessedTimestamp) {
-      const newEntry: MoveHistoryEntry = {
-        message: lastAction.message || 'Unknown action',
-        timestamp: lastAction.timestamp,
-        playerId: lastAction.playerId,
-        playerName: lastAction.playerName
+    const moveCallback = (moveData: any, playerData: any) => {
+      // Process the move directly here to avoid stale closure issues
+      const move = moveData.move_data;
+      let message = 'Unknown action';
+      let playerId = moveData.player_id;
+      let playerName = playerData?.name || 'Unknown';
+
+      if (move.type === 'system' || move.type === 'system_message') {
+        message = move.message || 'System event';
+        playerId = move.playerId || 'system';
+        playerName = 'Game';
+      } else if (move.lastAction?.message) {
+        message = move.lastAction.message;
+        playerName = move.lastAction?.playerName || playerData?.name || 'Unknown';
+      } else if (move.type) {
+        // Use centralized MoveFormatter for consistent formatting
+        const formattedMessage = moveFormatter.formatMove(move, players);
+
+        if (formattedMessage) {
+          message = formattedMessage;
+        } else {
+          // Fallback for basic moves
+          const typeMessages: Record<string, string> = {
+            'play_king': `${playerName} played a King to wake up a Queen`,
+            'play_knight': `${playerName} played a Knight`,
+            'play_potion': `${playerName} played a Sleeping Potion`,
+            'play_dragon': `${playerName} played a Dragon`,
+            'play_wand': `${playerName} played a Magic Wand`,
+            'play_jester': `${playerName} played a Jester`,
+            'play_math': `${playerName} played a math equation`,
+            'play_equation': `${playerName} played a math equation`,
+            'discard': `${playerName} discarded cards`
+          };
+          message = typeMessages[move.type] || `${playerName} made a move`;
+        }
+      }
+
+      const newEntry = {
+        message,
+        timestamp: new Date(moveData.created_at).getTime(),
+        playerId,
+        playerName
       };
 
       setMoveHistory(prev => {
-        // Avoid duplicates by checking both timestamp AND message
+        // Check for duplicates
         const isDuplicate = prev.some(entry =>
-          entry.timestamp === newEntry.timestamp &&
+          Math.abs(entry.timestamp - newEntry.timestamp) < 2000 &&
           entry.message === newEntry.message &&
           entry.playerId === newEntry.playerId
         );
@@ -115,12 +162,25 @@ export function useMoveHistory(
           return prev;
         }
 
-        return [newEntry, ...prev.slice(0, 49)]; // Keep last 50 moves
+        return [newEntry, ...prev.slice(0, 49)];
       });
 
-      setLastProcessedTimestamp(lastAction.timestamp);
-    }
-  }, [lastAction, lastProcessedTimestamp, hasLoadedHistory, gameId]);
+      setLastProcessedTimestamp(newEntry.timestamp);
+    };
+
+    const statusCallback = (status: string) => {
+      // Could add status handling logic here if needed
+    };
+
+    realtimeService.subscribeToGameMoves(gameId, moveCallback, statusCallback);
+
+    return () => {
+      realtimeService.unsubscribeFromGameMoves(gameId);
+    };
+  }, [gameId, players]); // Include players to get fresh data but still avoid constant reconnections
+
+  // Note: Removed lastAction tracking since we now use realtime subscriptions
+  // This prevents duplicate entries from both realtime and lastAction updates
 
   // Clear history when game changes
   useEffect(() => {
@@ -134,6 +194,7 @@ export function useMoveHistory(
     moveHistory,
     addMoveToHistory,
     clearHistory,
+    reloadHistory,
     isLoading
   };
 }

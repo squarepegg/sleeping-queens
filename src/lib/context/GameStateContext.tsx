@@ -19,6 +19,7 @@ interface GameContextState {
     connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
     lastError: string | null;
     loading: boolean;
+    drawnCards: { cards: any[]; timestamp: number } | null; // Private to current player
 }
 
 type GameAction =
@@ -27,7 +28,9 @@ type GameAction =
     | { type: 'SET_ERROR'; error: string }
     | { type: 'SET_LOADING'; loading: boolean }
     | { type: 'CLEAR_ERROR' }
-    | { type: 'RESET' };
+    | { type: 'RESET' }
+    | { type: 'SET_DRAWN_CARDS'; cards: any[] }
+    | { type: 'CLEAR_DRAWN_CARDS' };
 
 // ============================================
 // Reducer - Simplified
@@ -61,6 +64,22 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
                 connectionStatus: 'disconnected',
                 lastError: null,
                 loading: false,
+                drawnCards: null,
+            };
+
+        case 'SET_DRAWN_CARDS':
+            return {
+                ...state,
+                drawnCards: {
+                    cards: action.cards,
+                    timestamp: Date.now()
+                }
+            };
+
+        case 'CLEAR_DRAWN_CARDS':
+            return {
+                ...state,
+                drawnCards: null
             };
 
         default:
@@ -83,6 +102,7 @@ interface GameContextType extends GameContextState {
     joinGame: (roomCode: string) => Promise<{ success: boolean; gameId?: string }>;
     leaveGame: () => Promise<void>;
     clearError: () => void;
+    clearDrawnCards: () => void; // Add function to manually clear drawn cards
     
     // Additional functions needed by GameBoard (stub implementations for now)
     canPlayMove: () => boolean;
@@ -119,6 +139,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
         connectionStatus: 'disconnected',
         lastError: null,
         loading: false,
+        drawnCards: null,
     });
 
     const gameEngineRef = React.useRef<SleepingQueensGame | null>(null);
@@ -137,6 +158,28 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
 
         console.log('[GameContext] lastAction after filtering:', filteredState.lastAction);
 
+        // Check if current player drew cards (from server updates after turn ends)
+        if (user?.id && state.gameState) {
+            const currentPlayer = state.gameState.players.find(p => p.id === user.id);
+            const newPlayer = filteredState.players.find(p => p.id === user.id);
+
+            if (currentPlayer && newPlayer && newPlayer.hand.length > currentPlayer.hand.length) {
+                // Player drew cards - determine which ones are new
+                const oldHandIds = new Set(currentPlayer.hand.map(c => c.id));
+                const drawnCards = newPlayer.hand.filter(c => !oldHandIds.has(c.id));
+
+                if (drawnCards.length > 0) {
+                    // Track the drawn cards locally (private to this player)
+                    dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
+
+                    // Auto-clear after 8 seconds
+                    setTimeout(() => {
+                        dispatch({ type: 'CLEAR_DRAWN_CARDS' });
+                    }, 8000);
+                }
+            }
+        }
+
         // Update the game engine's state with the filtered state
         if (gameEngineRef.current) {
             gameEngineRef.current.setState(filteredState);
@@ -146,7 +189,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
         }
 
         dispatch({ type: 'SET_GAME_STATE', gameState: filteredState });
-    }, [user?.id]);
+    }, [user?.id, state.gameState]);
 
     // Handle connection status changes
     const handleConnectionChange = useCallback((status: GameContextState['connectionStatus']) => {
@@ -213,21 +256,49 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             return { isValid: false, error: 'Game not initialized' };
         }
 
+        // Always generate a unique moveId
+        const moveWithId: GameMove = {
+            ...move,
+            moveId: `${move.playerId}-${move.timestamp}-${Math.random().toString(36).substr(2, 9)}`
+        };
+
         // Validate move locally first
-        const validation = gameEngineRef.current.validateMove(move);
+        const validation = gameEngineRef.current.validateMove(moveWithId);
         if (!validation.isValid) {
             return validation;
         }
 
         // Create optimistic state
         const optimisticEngine = new SleepingQueensGame(state.gameState);
-        const result = optimisticEngine.playMove(move);
+        const result = optimisticEngine.playMove(moveWithId);
 
         if (!result.isValid) {
             return result;
         }
 
         const optimisticState = optimisticEngine.getState();
+
+        // Check if current player drew cards (hand size increased)
+        if (user?.id && state.gameState) {
+            const currentPlayer = state.gameState.players.find(p => p.id === user.id);
+            const newPlayer = optimisticState.players.find(p => p.id === user.id);
+
+            if (currentPlayer && newPlayer && newPlayer.hand.length > currentPlayer.hand.length) {
+                // Player drew cards - determine which ones are new
+                const oldHandIds = new Set(currentPlayer.hand.map(c => c.id));
+                const drawnCards = newPlayer.hand.filter(c => !oldHandIds.has(c.id));
+
+                if (drawnCards.length > 0) {
+                    // Track the drawn cards locally (private to this player)
+                    dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
+
+                    // Auto-clear after 8 seconds
+                    setTimeout(() => {
+                        dispatch({ type: 'CLEAR_DRAWN_CARDS' });
+                    }, 8000);
+                }
+            }
+        }
 
         // Apply optimistically to UI (only for this client)
         dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState });
@@ -243,7 +314,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             }
             
             const serverResult = await retryWithBackoff(
-                () => gameApiService.submitMove(gameId, move),
+                () => gameApiService.submitMove(gameId, moveWithId),
                 2, // Only 2 retries for moves to avoid confusion
                 500 // Start with 500ms delay
             );
@@ -392,6 +463,10 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
     // Clear error
     const clearError = useCallback(() => {
         dispatch({ type: 'CLEAR_ERROR' });
+    }, []);
+
+    const clearDrawnCards = useCallback(() => {
+        dispatch({ type: 'CLEAR_DRAWN_CARDS' });
     }, []);
 
     // Auto-initialize game if gameId is provided
@@ -599,6 +674,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
         joinGame,
         leaveGame,
         clearError,
+        clearDrawnCards,
         // Game mechanics functions
         canPlayMove,
         currentPlayer,

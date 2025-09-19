@@ -8,7 +8,7 @@ describe('SleepingQueensGame', () => {
   let game: GameEngineAdapter;
 
   beforeEach(() => {
-    game = new GameEngineAdapter();
+    game = new GameEngineAdapter({ testMode: true });
   });
 
   describe('Game Initialization', () => {

@@ -6,6 +6,7 @@ import {Crown, Hash, LogOut, Plus} from 'lucide-react';
 import {Button} from '../presentation/components/ui/Button';
 import {CreateGame} from '../presentation/components/lobby/CreateGame';
 import {JoinGame} from '../presentation/components/lobby/JoinGame';
+import {HowToPlay} from '../presentation/components/shared/HowToPlay';
 import {useAuth} from '../lib/hooks/useAuth';
 
 export default function Lobby() {
@@ -47,32 +48,34 @@ export default function Lobby() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-3 sm:p-4 safe-padding">
+        <div className="container-responsive max-w-4xl mx-auto">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex items-center justify-between mb-8 p-6 glass-effect rounded-xl"
+            className="flex flex-col sm:flex-row items-center sm:justify-between gap-4 mb-6 sm:mb-8 p-4 sm:p-6 glass-effect rounded-xl"
           >
-            <div className="flex items-center space-x-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full">
-                <Crown className="h-6 w-6 text-white" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full">
+                <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Game Lobby</h1>
-                <p className="text-purple-200">Welcome back, {user.username}!</p>
+              <div className="text-center sm:text-left">
+                <h1 className="text-xl-responsive sm:text-2xl font-bold text-white">Game Lobby</h1>
+                <p className="text-purple-200 text-sm-responsive sm:text-base">Welcome, {user.username}!</p>
               </div>
             </div>
             
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="text-gray-300 hover:text-white"
+              className="text-gray-300 hover:text-white touch-target"
+              size="sm"
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              <LogOut className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Logout</span>
+              <span className="sm:hidden">Exit</span>
             </Button>
           </motion.div>
 
@@ -81,13 +84,14 @@ export default function Lobby() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="flex items-center justify-center mb-8"
+            className="flex items-center justify-center mb-6 sm:mb-8"
           >
             <div className="flex p-1 glass-effect rounded-lg">
               <button
                 onClick={() => setActiveTab('create')}
                 className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200
+                  flex items-center space-x-1 sm:space-x-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all duration-200 touch-target
+                  text-sm-responsive sm:text-base
                   ${activeTab === 'create'
                     ? 'bg-blue-500 text-white shadow-lg'
                     : 'text-gray-300 hover:text-white'
@@ -95,12 +99,13 @@ export default function Lobby() {
                 `}
               >
                 <Plus className="h-4 w-4" />
-                <span>Create Game</span>
+                <span>Create</span>
               </button>
               <button
                 onClick={() => setActiveTab('join')}
                 className={`
-                  flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200
+                  flex items-center space-x-1 sm:space-x-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all duration-200 touch-target
+                  text-sm-responsive sm:text-base
                   ${activeTab === 'join'
                     ? 'bg-green-500 text-white shadow-lg'
                     : 'text-gray-300 hover:text-white'
@@ -108,7 +113,7 @@ export default function Lobby() {
                 `}
               >
                 <Hash className="h-4 w-4" />
-                <span>Join Game</span>
+                <span>Join</span>
               </button>
             </div>
           </motion.div>
@@ -151,42 +156,9 @@ export default function Lobby() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-12 glass-effect rounded-xl p-6"
+            className="mt-8 sm:mt-12"
           >
-            <h2 className="text-xl font-bold text-white mb-4">How to Play Sleeping Queens</h2>
-            <div className="grid md:grid-cols-2 gap-6 text-sm text-gray-300">
-              <div>
-                <h3 className="font-semibold text-white mb-2">🎯 Objective</h3>
-                <p className="mb-4">
-                  Be the first to collect the required number of queens or reach the point threshold:
-                </p>
-                <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>2 players: 5 queens or 50 points</li>
-                  <li>3-5 players: 4 queens or 40 points</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-white mb-2">🃏 Card Types</h3>
-                <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li><strong>Kings:</strong> Wake up sleeping queens</li>
-                  <li><strong>Knights:</strong> Steal opponents&#39; queens</li>
-                  <li><strong>Dragons:</strong> Block knight attacks</li>
-                  <li><strong>Potions:</strong> Put opponents&#39; queens to sleep</li>
-                  <li><strong>Wands:</strong> Block potion attacks</li>
-                  <li><strong>Numbers:</strong> Create math equations to draw cards</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-400/20 rounded-lg">
-              <h3 className="font-semibold text-blue-300 mb-2">💡 Strategy Tips</h3>
-              <p className="text-blue-200 text-sm">
-                Balance collecting high-value queens with protecting them from knights. 
-                Use math equations strategically to draw more cards when needed. 
-                Save dragons to defend against attacks on your most valuable queens!
-              </p>
-            </div>
+            <HowToPlay />
           </motion.div>
 
           {/* Background Elements */}

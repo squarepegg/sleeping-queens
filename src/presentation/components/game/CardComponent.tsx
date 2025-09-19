@@ -3,23 +3,8 @@ import {motion} from 'framer-motion';
 import clsx from 'clsx';
 import {Card, NumberCard, Queen} from '@/domain/models/Card';
 import {getCardDisplayName} from '@/domain/factories/CardFactory';
-import {
-    Beaker,
-    Bug,
-    Cake,
-    Cherry,
-    Crown,
-    Flower2,
-    Heart,
-    Moon,
-    Palette,
-    Shield,
-    Sparkles,
-    Star,
-    Sun,
-    Sword,
-    Wand2
-} from 'lucide-react';
+import {Sparkles} from 'lucide-react';
+import {CardRegistry} from './cards';
 
 export interface CardComponentProps {
   card: Card;
@@ -37,27 +22,16 @@ export interface CardComponentProps {
   onDragStart?: (card: Card) => void;
 }
 
-const QUEEN_ICONS: { [key: string]: React.ComponentType<any> } = {
-  'queen-cat': Bug,
-  'queen-dog': Heart,
-  'queen-cake': Cake,
-  'queen-pancake': Cake,
-  'queen-ladybug': Bug,
-  'queen-strawberry': Cherry,
-  'queen-rainbow': Palette,
-  'queen-heart': Heart,
-  'queen-star': Star,
-  'queen-moon': Moon,
-  'queen-sun': Sun,
-  'queen-rose': Flower2,
-};
-
-const CARD_TYPE_ICONS: { [key: string]: React.ComponentType<any> } = {
-  king: Crown,
-  knight: Sword,
-  dragon: Shield,
-  wand: Wand2,
-  potion: Beaker,
+// Card type to CSS class mapping (keeping for backward compatibility)
+const CARD_TYPE_CLASSES: { [key: string]: string } = {
+  queen: 'queen-card',
+  king: 'king-card',
+  knight: 'knight-card',
+  dragon: 'dragon-card',
+  wand: 'wand-card',
+  potion: 'potion-card',
+  jester: 'jester-card',
+  number: 'number-card',
 };
 
 export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
@@ -96,24 +70,13 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
   };
 
   const getCardTypeClass = () => {
-    switch (card.type) {
-      case 'queen':
-        return 'queen-card';
-      case 'king':
-        return 'king-card';
-      case 'knight':
-        return 'knight-card';
-      case 'dragon':
-        return 'dragon-card';
-      case 'wand':
-        return 'wand-card';
-      case 'potion':
-        return 'potion-card';
-      case 'number':
-        return 'number-card';
-      default:
-        return '';
+    // Try to get from renderer first
+    const renderer = CardRegistry.getRenderer(card);
+    if (renderer) {
+      return renderer.getClassName();
     }
+    // Fallback to default mapping
+    return CARD_TYPE_CLASSES[card.type] || '';
   };
 
   const getSizeClass = () => {
@@ -128,17 +91,14 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
   };
 
   const getIcon = () => {
-    if (card.type === 'queen') {
-      const IconComponent = QUEEN_ICONS[card.id] || Sparkles;
-      return <IconComponent className="h-8 w-8" />;
-    }
-    
-    const IconComponent = CARD_TYPE_ICONS[card.type];
-    if (IconComponent) {
-      return <IconComponent className="h-6 w-6" />;
+    // Use the card registry to get the appropriate renderer
+    const renderer = CardRegistry.getRenderer(card);
+    if (renderer) {
+      return renderer.getIcon(size);
     }
 
-    return null;
+    // Fallback to sparkles icon if no renderer found
+    return <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />;
   };
 
   const getCardTitle = () => {
@@ -218,45 +178,63 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
             </div>
           </div>
         ) : (
-          // Card face
-          <div className="w-full h-full flex flex-col items-center justify-center text-center p-1">
-            <div className="flex-shrink-0 mb-1">
-              {getIcon()}
-            </div>
-            
-            <div className="flex-grow flex flex-col justify-center min-h-0">
-              <div className={clsx(
-                'font-semibold leading-tight',
-                size === 'sm' ? 'text-[0.6rem]' : 'text-xs'
-              )}>
-                {getCardTitle()}
+          // Check if card has full rendering
+          (() => {
+            const renderer = CardRegistry.getRenderer(card);
+            if (renderer?.renderFullCard) {
+              // Use full card rendering
+              return (
+                <>
+                  {renderer.renderFullCard(size)}
+                  {/* Special effects overlay */}
+                  {(selected || isHovered) && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />
+                  )}
+                </>
+              );
+            }
+
+            // Default card face rendering
+            return (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center p-1">
+                <div className="flex-shrink-0 mb-1">
+                  {getIcon()}
+                </div>
+
+                <div className="flex-grow flex flex-col justify-center min-h-0">
+                  <div className={clsx(
+                    'font-semibold leading-tight',
+                    size === 'sm' ? 'text-[0.5rem] sm:text-[0.6rem]' : 'text-xs-responsive sm:text-xs'
+                  )}>
+                    {getCardTitle()}
+                  </div>
+
+                  {size !== 'sm' && (
+                    <div className="text-[0.5rem] sm:text-[0.55rem] text-gray-600 mt-0.5 opacity-75">
+                      {getCardSubtext()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Corner values for number cards - Responsive */}
+                {card.type === 'number' && (
+                  <>
+                    <div className="absolute top-0.5 sm:top-1 left-0.5 sm:left-1 text-xs-responsive sm:text-xs font-bold">
+                      {(card as NumberCard).value}
+                    </div>
+                    <div className="absolute bottom-0.5 sm:bottom-1 right-0.5 sm:right-1 text-xs-responsive sm:text-xs font-bold transform rotate-180">
+                      {(card as NumberCard).value}
+                    </div>
+                  </>
+                )}
+
+                {/* Special effects overlay */}
+                {(selected || isHovered) && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />
+                )}
               </div>
-              
-              {size !== 'sm' && (
-                <div className="text-[0.55rem] text-gray-600 mt-0.5 opacity-75">
-                  {getCardSubtext()}
-                </div>
-              )}
-            </div>
-
-            {/* Corner values for number cards */}
-            {card.type === 'number' && (
-              <>
-                <div className="absolute top-1 left-1 text-xs font-bold">
-                  {(card as NumberCard).value}
-                </div>
-                <div className="absolute bottom-1 right-1 text-xs font-bold transform rotate-180">
-                  {(card as NumberCard).value}
-                </div>
-              </>
-            )}
-
-
-            {/* Special effects overlay */}
-            {(selected || isHovered) && (
-              <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />
-            )}
-          </div>
+            );
+          })()
         )}
 
         {/* Selection indicator */}

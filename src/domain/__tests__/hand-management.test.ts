@@ -4,7 +4,7 @@ describe('Hand Management - Consistent Hand Size', () => {
   let game: GameEngineAdapter;
 
   beforeEach(() => {
-    game = new GameEngineAdapter();
+    game = new GameEngineAdapter({ testMode: true });
 
     // Add two players
     game.addPlayer({ id: 'p1', name: 'Player 1', isConnected: true, position: 0, hand: [], queens: [], score: 0 });

@@ -17,6 +17,12 @@ const customJestConfig = {
     '**/__tests__/**/*.(ts|tsx|js)',
     '**/*.(test|spec).(ts|tsx|js)'
   ],
+  // Exclude Playwright E2E tests
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/tests/e2e/',
+    '/.next/'
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {

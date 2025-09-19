@@ -15,7 +15,8 @@ export type MoveType =
   | 'clear_staged'
   | 'allow_knight_attack'
   | 'allow_potion_attack'
-  | 'rose_queen_bonus';
+  | 'rose_queen_bonus'
+  | 'system';
 
 export interface MathEquation {
   readonly cards: ReadonlyArray<NumberCard>;
@@ -27,24 +28,28 @@ export interface MathEquation {
 }
 
 export interface GameMove {
+  readonly moveId: string; // Unique identifier for idempotency (required)
   readonly type: MoveType;
   readonly playerId: string;
   readonly timestamp: number;
 
-  // Card references (modern format) - made required for backward compatibility
+  // Card references
   readonly cards: ReadonlyArray<Card>;
   readonly targetCard?: Card;
-  readonly targetPlayer?: string;
+  readonly targetPlayer?: string; // ID of the player being targeted
 
-  // Legacy/alternative property names for backwards compatibility
+  // Single card ID reference (alternative to cards array for single-card moves)
   readonly cardId?: string;
-  readonly cardIds?: ReadonlyArray<string>;
-  readonly targetQueen?: string;
+
+  // Target queen references
   readonly targetQueenId?: string;
-  readonly targetPlayerId?: string;
+  readonly targetQueen?: Card;
 
   // Math equation specific
   readonly mathEquation?: MathEquation;
+
+  // System message (for system moves)
+  readonly message?: string;
 }
 
 export interface MoveValidationResult {

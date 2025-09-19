@@ -14,7 +14,7 @@ export class TurnManager {
 
     // Case 2: Jester revealed a number and it landed on this player
     if (state.jesterReveal?.waitingForQueenSelection &&
-        state.jesterReveal?.targetPlayerId === playerId) {
+        state.jesterReveal?.targetPlayer === playerId) {
       return true;
     }
 

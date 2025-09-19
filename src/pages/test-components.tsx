@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import {useAuth} from '../lib/hooks/useAuth';
 import {GameStateProvider} from '../lib/context/GameStateContext';
-import {NewGameBoard} from '../presentation/components/game/NewGameBoard';
+import {GameBoard} from '../presentation/components/game/GameBoard';
 
 /**
  * Test page for new modular components in isolation
@@ -65,7 +65,7 @@ export default function TestComponentsPage() {
 
       {/* Use a test game ID - this will create or join a test game */}
       <GameStateProvider gameId="test-components">
-        <NewGameBoard />
+        <GameBoard />
       </GameStateProvider>
     </>
   );

@@ -33,18 +33,16 @@ export const MoveHistorySidebar: React.FC<MoveHistorySidebarProps> = ({ gameId, 
   return (
     <>
       {/* Toggle Button */}
-      <motion.button
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-40 bg-gray-800/90 backdrop-blur-sm p-3 rounded-l-lg shadow-lg hover:bg-gray-700 transition-colors"
+      <button
+        className="fixed right-4 top-1/2 -translate-y-1/2 z-40 bg-gray-800/90 backdrop-blur-sm p-3 rounded-l-lg shadow-lg hover:bg-gray-700 transition-all"
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
       >
         {isOpen ? (
           <ChevronLeft className="w-5 h-5 text-gray-300" />
         ) : (
           <History className="w-5 h-5 text-gray-300" />
         )}
-      </motion.button>
+      </button>
 
       {/* Sidebar */}
       <AnimatePresence>
