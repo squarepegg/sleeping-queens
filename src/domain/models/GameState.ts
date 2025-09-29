@@ -35,10 +35,17 @@ export interface LastAction {
   readonly playerId: string;
   readonly playerName: string;
   readonly actionType: 'discard' | 'play_king' | 'play_knight' | 'play_potion' | 'play_jester' | 'play_dragon' | 'play_wand' | 'play_math';
-  readonly cards: ReadonlyArray<Card>;
+  readonly cards: ReadonlyArray<Card>; // Private: replacement cards picked up (shown to current player)
+  readonly playedCards?: ReadonlyArray<Card>; // Public: cards played/discarded (shown to all players)
   readonly drawnCount?: number;
   readonly message?: string;
   readonly timestamp: number;
+  // New: Support for grouped actions in a single turn
+  readonly actionDetails?: ReadonlyArray<{
+    readonly action: string;
+    readonly detail?: string;
+    readonly cards?: ReadonlyArray<Card>;
+  }>;
 }
 
 export interface GameState {

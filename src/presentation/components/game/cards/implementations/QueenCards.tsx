@@ -18,26 +18,40 @@ import {
 } from 'lucide-react';
 import { CardRenderer, CARD_ICON_SIZES } from '../CardRegistry';
 
-// Base Queen Card Renderer
-class QueenCardRenderer implements CardRenderer {
-  constructor(
-    private icon: React.ComponentType<any>,
-    private imagePath?: string
-  ) {}
+// Map queen IDs to their specific images
+const QUEEN_IMAGE_MAP: { [key: string]: string } = {
+  'queen-cat': '/images/queens/cat-queen.png',
+  'queen-dog': '/images/queens/dog-queen.png',
+  'queen-cake': '/images/queens/cake-queen.png',
+  'queen-pancake': '/images/queens/pancake-queen.png',
+  'queen-ladybug': '/images/queens/ladybug-queen.png',
+  'queen-starfish': '/images/queens/starfish-queen.png',
+  'queen-rainbow': '/images/queens/rainbow-queen.png',
+  'queen-heart': '/images/queens/heart-queen.png',
+  'queen-peacock': '/images/queens/peacock-queen.png',
+  'queen-moon': '/images/queens/moon-queen.png',
+  'queen-sunflower': '/images/queens/sunflower-queen.png',
+  'queen-rose': '/images/queens/rose-queen.png',
+};
 
+// Queen Card Renderer
+export class QueenCardRenderer implements CardRenderer {
   getIcon(size: 'sm' | 'md' | 'lg'): React.ReactNode {
-    const Icon = this.icon;
     // Queens use the 'lg' size mapping by default
     const sizeClass = size === 'sm' ? CARD_ICON_SIZES.sm : CARD_ICON_SIZES.lg;
-    return <Icon className={sizeClass} />;
+    return <Sparkles className={sizeClass} />;
   }
 
   getClassName(): string {
     return 'queen-card';
   }
 
-  renderFullCard(size: 'sm' | 'md' | 'lg'): React.ReactNode {
-    if (!this.imagePath) {
+  renderFullCard(size: 'sm' | 'md' | 'lg', card?: any): React.ReactNode {
+    // Map card ID directly to its corresponding image
+    const cardId = card?.id;
+    const imagePath = QUEEN_IMAGE_MAP[cardId];
+
+    if (!imagePath) {
       // Fallback to icon rendering
       return null;
     }
@@ -46,7 +60,7 @@ class QueenCardRenderer implements CardRenderer {
       <div className="absolute inset-0 overflow-hidden rounded-lg">
         <div className="absolute inset-0 scale-125 origin-center">
           <Image
-            src={this.imagePath}
+            src={imagePath}
             alt="Queen Card"
             fill
             className="object-cover"

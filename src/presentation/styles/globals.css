@@ -50,7 +50,8 @@
       height: 151px;
     }
   }
-  
+
+
   .card-large {
     width: clamp(72px, 20vw, 120px);
     height: clamp(100px, 28vw, 168px);

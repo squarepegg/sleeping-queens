@@ -243,7 +243,7 @@ describe('CardComponent', () => {
       );
 
       const card = container.firstChild as HTMLElement;
-      expect(card.className).toContain('card-large');
+      expect(card.className).toContain('card-base'); // All cards use card-base for consistent sizing
     });
 
     test('should render medium card by default', () => {
@@ -252,6 +252,41 @@ describe('CardComponent', () => {
       );
 
       const card = container.firstChild as HTMLElement;
+      expect(card.className).toContain('card-base');
+    });
+
+    test('should render number card with base size', () => {
+      const numberCard: NumberCard = {
+        id: 'num-test',
+        type: 'number',
+        name: '5',
+        value: 5
+      };
+
+      const { container } = render(
+        <CardComponent card={numberCard} />
+      );
+
+      const card = container.firstChild as HTMLElement;
+      // Number cards get regular card-base size
+      expect(card.className).toContain('card-base');
+    });
+
+    test('should render queen card with base size', () => {
+      const queenCard: Queen = {
+        id: 'queen-test',
+        type: 'queen',
+        name: 'Test Queen',
+        points: 10,
+        isAwake: true
+      };
+
+      const { container } = render(
+        <CardComponent card={queenCard} />
+      );
+
+      const card = container.firstChild as HTMLElement;
+      // Queens now use regular card-base size like all other cards
       expect(card.className).toContain('card-base');
     });
   });

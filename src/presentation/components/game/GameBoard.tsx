@@ -18,6 +18,7 @@ import {useGameState} from '@/lib/context/GameStateContext';
 import {useAuth} from '@/lib/hooks/useAuth';
 import {Card, isNumberCard, NumberCard, Queen} from '@/domain/models/Card';
 import {Player} from '@/domain/models/Player';
+import {LastAction} from '@/domain/models/GameState';
 import {validateMathEquation} from '@/lib/utils/mathValidator';
 
 // Import modular components
@@ -29,6 +30,7 @@ import {InfoDrawer} from './InfoDrawer';
 import {StagingArea} from './StagingArea';
 import {HandOverlay} from './HandOverlay';
 import {ActionBanner} from './ActionBanner';
+import {CardComponent} from './CardComponent';
 
 // Import modals
 import {DragonBlockModal} from './modals/DragonBlockModal';
@@ -73,7 +75,8 @@ export function GameBoard() {
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);  // For multi-select
   const [showPopover, setShowPopover] = useState(false);
   const [recentDefenseType, setRecentDefenseType] = useState<'dragon' | 'wand' | null>(null);
-  const [showActionResult, setShowActionResult] = useState(false);
+  // Initialize to true if there's a lastAction on page load so drawer shows on refresh
+  const [showActionResult, setShowActionResult] = useState(!!gameState?.lastAction);
   const [drawerDismissed, setDrawerDismissed] = useState(false);
   const [showFirstPlayerAnimation, setShowFirstPlayerAnimation] = useState(false);
   const [previousPhase, setPreviousPhase] = useState<string | undefined>(undefined);
@@ -223,7 +226,7 @@ export function GameBoard() {
           isNumberCard(stagedCards[1])) {
 
         // If they're a pair, discard them
-        if (stagedCards[0].value === stagedCards[1].value) {
+        if ((stagedCards[0] as NumberCard).value === (stagedCards[1] as NumberCard).value) {
           await playMove({
             type: 'discard',
             playerId: currentUserId,
@@ -319,6 +322,7 @@ export function GameBoard() {
       // Two number cards that aren't a pair need staging (to show error)
       if (stagedCards.length === 2 &&
           stagedCards.every(c => c.type === 'number') &&
+          isNumberCard(stagedCards[0]) && isNumberCard(stagedCards[1]) &&
           stagedCards[0].value !== stagedCards[1].value) {
         return true;
       }
@@ -381,7 +385,7 @@ export function GameBoard() {
               playerId: currentUserId,
               cards: updatedStagedCards,
               mathEquation: {
-                cards: updatedStagedCards,
+                cards: updatedStagedCards as NumberCard[],
                 equation: validation.equation || '',
                 result: values[values.length - 1]
               },
@@ -462,7 +466,7 @@ export function GameBoard() {
 
           if (card.type === 'king') {
             // Kings target sleeping queens
-            hasValidTargets = gameState?.sleepingQueens && gameState.sleepingQueens.length > 0;
+            hasValidTargets = !!(gameState?.sleepingQueens && gameState.sleepingQueens.length > 0);
           } else if (card.type === 'knight' || card.type === 'potion') {
             // Knights and Potions target opponent queens
             hasValidTargets = otherPlayers.some(player => player.queens && player.queens.length > 0);
@@ -491,7 +495,7 @@ export function GameBoard() {
       if (cardsToPlay.length === 2 &&
           cardsToPlay.every(c => c && isNumberCard(c))) {
         const [card1, card2] = cardsToPlay as NumberCard[];
-        if (card1.value === card2.value) {
+        if ((card1 as NumberCard).value === (card2 as NumberCard).value) {
           // Matching pair - discard immediately
           playMove({
             type: 'discard',
@@ -527,7 +531,7 @@ export function GameBoard() {
               playerId: currentUserId,
               cards: cardsToPlay as Card[],
               mathEquation: {
-                cards: cardsToPlay as Card[],
+                cards: cardsToPlay as NumberCard[],
                 equation: validation.equation || '',
                 result: values[values.length - 1]
               },
@@ -836,17 +840,11 @@ export function GameBoard() {
   useEffect(() => {
     if (!gameState?.lastAction) return;
 
-    // Prevent showing old actions on initial page load
+    // On initial page load/refresh, always show the last action to give context
     if (lastActionTimestamp === null) {
-      // First time seeing an action - check if it's recent (within last 5 seconds)
-      const isRecentAction = Date.now() - gameState.lastAction.timestamp < 5000;
+      // First time seeing an action - always show it on page refresh
       setLastActionTimestamp(gameState.lastAction.timestamp);
-
-      // If the action is old (from before page load), don't show it
-      if (!isRecentAction) {
-        return;
-      }
-      // If it's recent, continue to show it
+      // Always show the last action on initial load to give players context
     } else {
       // Only process new actions
       if (gameState.lastAction.timestamp <= lastActionTimestamp) {
@@ -858,9 +856,8 @@ export function GameBoard() {
     }
 
     // Only show action result if this is a completed action (not staging)
-    // Check if the action type indicates completion
+    // Check if the action message indicates it's still in progress
     const isCompletedAction =
-      gameState.lastAction.actionType !== 'stage_cards' &&
       !gameState.lastAction.message?.includes('is selecting') &&
       !gameState.lastAction.message?.includes('staged');
 
@@ -889,7 +886,7 @@ export function GameBoard() {
 
   // Auto-dismiss drawer when it's your turn to select for jester reveal or Rose Queen bonus
   useEffect(() => {
-    if (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer === currentUserId) {
+    if (gameState?.jesterReveal?.waitingForQueenSelection && gameState.jesterReveal.targetPlayer === currentUserId) {
       // Auto-dismiss the drawer so player can see the queen selection UI
       setDrawerDismissed(true);
     }
@@ -897,7 +894,7 @@ export function GameBoard() {
       // Auto-dismiss for Rose Queen bonus selection too
       setDrawerDismissed(true);
     }
-  }, [jesterReveal, gameState?.roseQueenBonus, currentUserId]);
+  }, [gameState?.jesterReveal, gameState?.roseQueenBonus, currentUserId]);
 
   // Track recent defense actions to prevent showing modals again
   useEffect(() => {
@@ -1301,13 +1298,19 @@ export function GameBoard() {
                   )) ||
                   (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId) ||
                   (gameState?.roseQueenBonus?.pending && gameState.roseQueenBonus.playerId !== currentUserId) ||
-                  (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer !== currentUserId)
+                  (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer !== currentUserId) ||
+                  (gameState?.pendingKnightAttack && gameState.pendingKnightAttack.attacker !== currentUserId) ||
+                  (gameState?.pendingPotionAttack && gameState.pendingPotionAttack.attacker !== currentUserId)
                 )
               }
               cards={
                 // Show cards from action or staged cards
                 (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
-                  ? gameState.lastAction.cards || []
+                  ? (() => {
+                      // For opponents, show public cards (played/discarded cards)
+                      // These are visible to everyone
+                      return gameState.lastAction.playedCards ? [...gameState.lastAction.playedCards] : [];
+                    })()
                   : (!showActionResult && gameState?.stagedCards)
                     ? Object.entries(gameState.stagedCards)
                         .filter(([playerId]) => playerId !== currentUserId)
@@ -1316,17 +1319,22 @@ export function GameBoard() {
               }
               message={
                 // Show the action message for completed actions, Rose Queen bonus, or Jester reveal
-                (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer !== currentUserId)
-                  ? (() => {
-                      const targetPlayer = players.find(p => p.id === jesterReveal.targetPlayer);
-                      const value = jesterReveal.revealedCard.type === 'number' ?
-                        (jesterReveal.revealedCard as NumberCard).value : null;
-                      return `🃏 Jester revealed a ${value || 'card'}! ${targetPlayer?.name || 'Player'} is choosing a queen to wake up...`;
-                    })()
-                  : (gameState?.roseQueenBonus?.pending && gameState.roseQueenBonus.playerId !== currentUserId)
-                    ? `🌹 ${players.find(p => p.id === gameState.roseQueenBonus?.playerId)?.name || 'Player'} woke the Rose Queen! Selecting bonus queen...`
-                    : (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
-                      ? getPersonalizedMessage(gameState.lastAction)
+                // Check for pending attacks first to ensure we show waiting messages
+                (gameState?.pendingPotionAttack && gameState.pendingPotionAttack.attacker !== currentUserId)
+                  ? `${players.find(p => p.id === gameState.pendingPotionAttack.attacker)?.name || 'Player'} played Sleeping Potion, waiting for response...`
+                  : (gameState?.pendingKnightAttack && gameState.pendingKnightAttack.attacker !== currentUserId)
+                    ? `${players.find(p => p.id === gameState.pendingKnightAttack.attacker)?.name || 'Player'} played Knight, waiting for response...`
+                    : (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer !== currentUserId)
+                      ? (() => {
+                          const targetPlayer = players.find(p => p.id === jesterReveal.targetPlayer);
+                          const value = jesterReveal.revealedCard.type === 'number' ?
+                            (jesterReveal.revealedCard as NumberCard).value : null;
+                          return `🃏 Jester revealed a ${value || 'card'}! ${targetPlayer?.name || 'Player'} is choosing a queen to wake up...`;
+                        })()
+                      : (gameState?.roseQueenBonus?.pending && gameState.roseQueenBonus.playerId !== currentUserId)
+                        ? `🌹 ${players.find(p => p.id === gameState.roseQueenBonus?.playerId)?.name || 'Player'} woke the Rose Queen! Selecting bonus queen...`
+                        : (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
+                          ? getPersonalizedMessage(gameState.lastAction)
                       : gameState?.stagedCards
                         ? (() => {
                             const otherPlayerEntry = Object.entries(gameState.stagedCards)
@@ -1369,18 +1377,52 @@ export function GameBoard() {
               isProcessing={false}
               isPersistent={true}
               onDismiss={() => setDrawerDismissed(true)}
+              actionDetails={
+                (showActionResult && gameState?.lastAction && gameState.lastAction.playerId !== currentUserId)
+                  ? gameState.lastAction.actionDetails?.map(d => ({ ...d, cards: d.cards ? [...d.cards] : undefined }))
+                  : undefined
+              }
             />
           )}
 
-          {/* Drawn Cards Info Drawer - Private to current player only */}
+          {/* Current Player Action Result Drawer - Shows current player's own completed actions INCLUDING drawn cards */}
           <InfoDrawer
-            isOpen={!!(drawnCards && drawnCards.cards.length > 0)}
-            cards={drawnCards?.cards || []}
-            message={`Here ${drawnCards?.cards.length === 1 ? 'is the card' : 'are the cards'} you picked up:`}
-            playerName="Cards Drawn"
+            isOpen={
+              !drawerDismissed &&
+              showActionResult &&
+              gameState?.lastAction &&
+              gameState.lastAction.playerId === currentUserId
+            }
+            cards={
+              // For current player, show private cards (replacement cards picked up)
+              gameState?.lastAction?.cards || []
+            }
+            message={
+              // If there's a pending attack from this player, make sure we show the waiting message
+              (gameState?.pendingPotionAttack && gameState.pendingPotionAttack.attacker === currentUserId)
+                ? `You played Sleeping Potion, waiting for response...`
+                : (gameState?.pendingKnightAttack && gameState.pendingKnightAttack.attacker === currentUserId)
+                  ? `You played Knight, waiting for response...`
+                  : gameState?.lastAction?.message
+                    ? gameState.lastAction.message
+                        .replace(new RegExp(`^${gameState.lastAction.playerName || ''}\\s+`, 'i'), 'You ')
+                        .replace(new RegExp(`\\b${gameState.lastAction.playerName || ''}\\s+keeps`, 'i'), 'You keep')
+                    : ''
+            }
+            playerName={gameState?.lastAction?.playerName}
             isProcessing={false}
-            isPersistent={false}
-            onDismiss={clearDrawnCards}
+            isPersistent={true}
+            isCurrentPlayer={true}
+            onDismiss={() => {
+              setDrawerDismissed(true);
+              // Also clear drawn cards if they exist
+              if (drawnCards && drawnCards.cards.length > 0) {
+                clearDrawnCards();
+              }
+            }}
+            actionDetails={
+              gameState?.lastAction?.actionDetails?.map(d => ({ ...d, cards: d.cards ? [...d.cards] : undefined }))
+            }
           />
 
 
@@ -1512,23 +1554,16 @@ export function GameBoard() {
                     
                     {/* Cards Container - Responsive layout */}
                     <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-start">
-                      {/* Player's Queens - Responsive card style */}
+                      {/* Player's Queens - Using CardComponent */}
                       {currentUserPlayer.queens && currentUserPlayer.queens.length > 0 && (
                         <div className="flex gap-2 flex-wrap md:flex-nowrap md:flex-shrink-0 items-start">
                           {currentUserPlayer.queens.map(queen => (
-                            <div
-                              key={queen.id}
-                              className="relative group"
-                            >
-                              <div className="card-base sm:card-large bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg border-2 border-purple-400 shadow-xl flex flex-col items-center justify-center p-2 transform transition-transform group-hover:scale-105">
-                                <Crown className="h-4 sm:h-5 md:h-6 w-4 sm:w-5 md:w-6 text-yellow-400 mb-1" />
-                                <div className="text-xs-responsive sm:text-xs text-white text-center font-semibold">
-                                  {queen.name}
-                                </div>
-                                <div className="absolute bottom-1 sm:bottom-2 right-1 sm:right-2 bg-yellow-400 text-black text-xs-responsive sm:text-xs font-bold w-5 sm:w-6 h-5 sm:h-6 rounded-full flex items-center justify-center">
-                                  {queen.points}
-                                </div>
-                              </div>
+                            <div key={queen.id} className="relative" title={`${queen.name} (${queen.points} points)`}>
+                              <CardComponent
+                                card={queen}
+                                size="md"
+                                interactive={false}
+                              />
                             </div>
                           ))}
                         </div>
@@ -1671,8 +1706,9 @@ export function GameBoard() {
         )}
 
 
-        {/* Wand Block Modal - Show for any player with a wand EXCEPT the one currently playing it */}
+        {/* Wand Block Modal - Show only for the target player (defender) who has a wand */}
         {pendingPotionAttack &&
+         pendingPotionAttack.target === currentUserId &&
          currentUserPlayer?.hand?.some(card => card.type === 'wand') &&
          recentDefenseType !== 'wand' && ( // Don't show if this player just played a wand
           <WandBlockModal

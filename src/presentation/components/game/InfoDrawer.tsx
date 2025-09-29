@@ -12,6 +12,12 @@ interface InfoDrawerProps {
   onDismiss?: () => void;
   isProcessing?: boolean;
   isPersistent?: boolean; // If true, drawer stays open until manually dismissed
+  isCurrentPlayer?: boolean; // If true, shows "Your Turn" instead of "[PlayerName]'s Turn"
+  actionDetails?: Array<{
+    action: string;
+    detail?: string;
+    cards?: Card[];
+  }>; // For showing grouped actions
 }
 
 
@@ -22,10 +28,84 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
   playerName,
   onDismiss,
   isProcessing = false,
-  isPersistent = false
+  isPersistent = false,
+  isCurrentPlayer = false,
+  actionDetails
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [showMinimizedButton, setShowMinimizedButton] = useState(false);
+
+  // Generate friendly message from actionDetails
+  const getFriendlyMessage = (): string => {
+    if (!actionDetails || actionDetails.length === 0) {
+      return message || 'Waiting for action...';
+    }
+
+    // Look for key actions to create friendly messages
+    const playedKing = actionDetails.find(d => d.action === 'Played King');
+    const wokeQueen = actionDetails.find(d => d.action === 'Woke Queen');
+    const playedKnight = actionDetails.find(d => d.action === 'Played Knight');
+    const stoleQueen = actionDetails.find(d => d.action === 'Stole Queen');
+    const playedJester = actionDetails.find(d => d.action === 'Played Jester');
+    const playedPotion = actionDetails.find(d => d.action === 'Played Potion');
+    const discardedCards = actionDetails.find(d => d.action === 'Discarded cards');
+    const roseBonus = actionDetails.find(d => d.action === 'Rose Queen Bonus');
+    const queenConflict = actionDetails.find(d => d.action === 'Queen Conflict');
+
+    // Create contextual friendly messages
+    if (playedKing && wokeQueen) {
+      const kingName = playedKing.cards?.[0]?.name || 'King';
+      const queenName = wokeQueen.cards?.[0]?.name || 'Queen';
+      const points = wokeQueen.detail?.match(/\d+/)?.[0] || '';
+
+      if (roseBonus) {
+        return `Woke ${queenName} (${points} points) with ${kingName}! Rose Queen bonus activated - choose another queen!`;
+      }
+      if (queenConflict) {
+        return `Woke ${queenName} with ${kingName}, but ${queenConflict.detail}`;
+      }
+      return `Woke ${queenName} (${points} points) with ${kingName}!`;
+    }
+
+    if (playedKnight) {
+      if (stoleQueen) {
+        const queenInfo = stoleQueen.detail?.match(/(.+?) \((\d+) points\)/);
+        const queenName = queenInfo?.[1] || 'a Queen';
+        const targetPlayer = stoleQueen.detail?.match(/from (.+)/)?.[1] || 'opponent';
+        return `Successfully stole ${queenName} from ${targetPlayer} with a Knight!`;
+      }
+      const targetInfo = actionDetails.find(d => d.action === 'Target');
+      if (targetInfo) {
+        const waiting = actionDetails.find(d => d.action === 'Waiting');
+        if (waiting?.detail?.includes('can block')) {
+          return `Attempting to steal ${targetInfo.detail} - they can defend with a Dragon!`;
+        }
+        return `Attempting to steal ${targetInfo.detail}!`;
+      }
+    }
+
+    if (playedJester) {
+      const revealedCard = actionDetails.find(d => d.action === 'Revealed card');
+      if (revealedCard?.detail) {
+        return `Played a Jester and revealed a ${revealedCard.detail}!`;
+      }
+    }
+
+    if (playedPotion) {
+      const putToSleep = actionDetails.find(d => d.action === 'Put Queen to sleep');
+      if (putToSleep) {
+        const queenName = putToSleep.cards?.[0]?.name || 'Queen';
+        return `Used a Sleeping Potion on ${queenName}!`;
+      }
+    }
+
+    if (discardedCards) {
+      return discardedCards.detail || 'Discarded cards and drew new ones!';
+    }
+
+    // Default to original message
+    return message || 'Action completed!';
+  };
 
   // Reset minimized state when drawer opens with new content
   useEffect(() => {
@@ -87,10 +167,11 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
                     <div>
                       <h3 className="text-xl sm:text-2xl font-bold text-white">
                         {playerName === 'Cards Drawn' ? 'You Picked Up' :
+                         isCurrentPlayer ? 'Your Turn' :
                          playerName ? `${playerName}'s Turn` : 'Action in Progress'}
                       </h3>
                       <p className="text-sm sm:text-base text-gray-300 mt-1 leading-relaxed">
-                        {message || 'Waiting for action...'}
+                        {getFriendlyMessage()}
                       </p>
                     </div>
                   </div>
@@ -106,9 +187,87 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
                   )}
                 </div>
 
+                {/* Display Important Cards - Show key cards from the action prominently */}
+                {actionDetails && actionDetails.length > 0 && (
+                  <div className="mb-4">
+                    {(() => {
+                      // Collect important cards to display (played cards and affected queens)
+                      const importantCards = actionDetails
+                        .filter(d => d.cards && d.cards.length > 0 &&
+                                (d.action === 'Played King' ||
+                                 d.action === 'Woke Queen' ||
+                                 d.action === 'Played Knight' ||
+                                 d.action === 'Stole Queen' ||
+                                 d.action === 'Played Jester' ||
+                                 d.action === 'Played Potion' ||
+                                 d.action === 'Put Queen to sleep' ||
+                                 d.action === 'Revealed card'))
+                        .flatMap(d => d.cards || []);
+
+                      if (importantCards.length > 0) {
+                        return (
+                          <div className="flex justify-center gap-4 flex-wrap">
+                            {importantCards.map((card, idx) => (
+                              <motion.div
+                                key={`${card.id}-${idx}`}
+                                initial={{ opacity: 0, y: 20, scale: 0.8, rotateY: 180 }}
+                                animate={{ opacity: 1, y: 0, scale: 1, rotateY: 0 }}
+                                transition={{
+                                  delay: idx * 0.15,
+                                  type: "spring",
+                                  stiffness: 200
+                                }}
+                                className="transform-gpu"
+                              >
+                                <CardComponent
+                                  card={card}
+                                  size="md"
+                                  interactive={false}
+                                  className="shadow-2xl hover:shadow-3xl transition-shadow"
+                                />
+                              </motion.div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+
                 {/* Cards Display - Visual cards using the same CardComponent as the game */}
-                {cards.length > 0 && (
+                {/* Show cards unless they would be duplicated in actionDetails important cards section */}
+                {cards.length > 0 && (() => {
+                  // Always show for current player (private replacement cards)
+                  if (isCurrentPlayer) return true;
+
+                  // Show if no actionDetails
+                  if (!actionDetails || actionDetails.length === 0) return true;
+
+                  // Don't show if actionDetails already displays important cards that would duplicate these
+                  const hasImportantCardsInActionDetails = actionDetails.some(d =>
+                    d.cards && d.cards.length > 0 &&
+                    (d.action === 'Played King' ||
+                     d.action === 'Woke Queen' ||
+                     d.action === 'Played Knight' ||
+                     d.action === 'Stole Queen' ||
+                     d.action === 'Played Jester' ||
+                     d.action === 'Played Potion' ||
+                     d.action === 'Put Queen to sleep' ||
+                     d.action === 'Revealed card')
+                  );
+
+                  // Show cards if actionDetails doesn't have important cards to display
+                  return !hasImportantCardsInActionDetails;
+                })() && (
                   <div className="mb-6">
+                    {/* Add label for cards */}
+                    <p className="text-center text-sm text-gray-400 mb-3">
+                      {isCurrentPlayer
+                        ? (cards.length === 1 ? 'You picked up:' : `You picked up ${cards.length} cards:`)
+                        : (cards.length === 1 ? 'Card played:' : `Cards played:`)
+                      }
+                    </p>
                     <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 justify-center">
                       {cards.map((card, index) => (
                         <motion.div

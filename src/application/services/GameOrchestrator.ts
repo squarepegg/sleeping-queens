@@ -13,6 +13,7 @@ import {TurnManager} from '@/domain/services/TurnManager';
 import {WinConditions} from '@/domain/rules/WinConditions';
 import {debugLogger as testDebugLogger} from '@/infrastructure/logging/DebugLogger';
 import {validateMathEquation} from '@/lib/utils/mathValidator';
+import {ActionMessageBuilder} from '../utils/ActionMessageBuilder';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export class GameOrchestrator {
@@ -110,10 +111,11 @@ export class GameOrchestrator {
         newState = TurnManager.advanceTurn(newState);
       }
 
-      // Check win conditions - but NOT if there's a pending defense phase
+      // Check win conditions - but NOT if there's a pending defense phase or Rose Queen bonus
       // Win conditions should only be checked after attacks are fully resolved
       const hasPendingDefense = newState.pendingKnightAttack || newState.pendingPotionAttack;
-      if (!hasPendingDefense) {
+      const hasPendingRoseBonus = newState.roseQueenBonus?.pending;
+      if (!hasPendingDefense && !hasPendingRoseBonus) {
         const winResult = WinConditions.checkWinCondition(newState);
         if (winResult.hasWinner && winResult.winnerId) {
           newState = {
@@ -219,9 +221,13 @@ export class GameOrchestrator {
 
             // Draw replacement card if hand is below 5
             const newDeck = [...state.deck];
+            const replacementCards = [];
             if (newHand.length < 5 && newDeck.length > 0) {
               const card = newDeck.pop();
-              if (card) newHand.push(card);
+              if (card) {
+                newHand.push(card);
+                replacementCards.push(card);
+              }
             }
 
             const newPlayers = [...state.players];
@@ -242,7 +248,8 @@ export class GameOrchestrator {
                 playerId: move.playerId,
                 playerName: player.name,
                 actionType: 'play_dragon',
-                cards: [dragonCard],
+                cards: replacementCards, // Private: replacement card picked up
+                playedCards: [dragonCard], // Public: dragon card that was played
                 message: `${player.name} played a Dragon to block ${attacker?.name || 'attacker'}'s Knight attack on ${targetQueen?.name || 'queen'}!`,
                 timestamp: Date.now()
               }
@@ -260,9 +267,13 @@ export class GameOrchestrator {
 
             // Draw replacement card if hand is below 5
             const newDeck = [...state.deck];
+            const replacementCards = [];
             if (newHand.length < 5 && newDeck.length > 0) {
               const card = newDeck.pop();
-              if (card) newHand.push(card);
+              if (card) {
+                newHand.push(card);
+                replacementCards.push(card);
+              }
             }
 
             const newPlayers = [...state.players];
@@ -283,7 +294,8 @@ export class GameOrchestrator {
                 playerId: move.playerId,
                 playerName: player.name,
                 actionType: 'play_wand',
-                cards: [wandCard],
+                cards: replacementCards, // Private: replacement card picked up
+                playedCards: [wandCard], // Public: wand card that was played
                 message: `${player.name} played a Magic Wand to block ${attacker?.name || 'attacker'}'s Sleeping Potion on ${targetQueen?.name || 'queen'}!`,
                 timestamp: Date.now()
               }
@@ -349,6 +361,7 @@ export class GameOrchestrator {
         // Draw replacement cards to maintain original hand size
         const originalHandSize = player.hand.length;
         const cardsToReplace = Math.min(cards.length, originalHandSize - newHand.length);
+        const drawnCards: Card[] = []; // Track the cards that were drawn
 
         for (let i = 0; i < cardsToReplace; i++) {
           if (newDeck.length === 0 && newDiscardPile.length > 0) {
@@ -358,7 +371,10 @@ export class GameOrchestrator {
           }
           if (newDeck.length > 0) {
             const card = newDeck.pop();
-            if (card) newHand.push(card);
+            if (card) {
+              newHand.push(card);
+              drawnCards.push(card); // Track drawn cards for InfoDrawer
+            }
           } else {
             break; // No more cards available
           }
@@ -401,7 +417,7 @@ export class GameOrchestrator {
           const awakenedQueen = newQueens[newQueens.length - 1];
           queenMessage = ` and woke ${awakenedQueen.name} (${awakenedQueen.points} points)!`;
         } else {
-          queenMessage = ` and drew ${cards.length} cards`;
+          queenMessage = ` and drew ${drawnCards.length} cards`;
         }
 
         // Create new state (don't advance turn - orchestrator handles that)
@@ -409,9 +425,14 @@ export class GameOrchestrator {
           playerId: move.playerId,
           playerName: player.name,
           actionType: 'play_math',
-          cards: cards,
-          drawnCount: cards.length,
-          message: `${player.name} played equation ${equationStr}${queenMessage}`,
+          cards: drawnCards, // Private: replacement cards picked up
+          playedCards: cards, // Public: equation cards that were played
+          drawnCount: drawnCards.length,
+          message: ActionMessageBuilder.buildCompoundMessage({
+            playerName: player.name,
+            primaryAction: `played equation ${equationStr}${queenMessage}`
+            // Don't include cardsDrawn since it's already in queenMessage to avoid duplication
+          }),
           timestamp: Date.now()
         };
 
@@ -491,7 +512,9 @@ export class GameOrchestrator {
 
         return {
           ...state,
-          stagedCards: newStagedCards
+          stagedCards: newStagedCards,
+          updatedAt: Date.now(),
+          version: state.version + 1
         };
       }
     };
@@ -669,6 +692,11 @@ export class GameOrchestrator {
       }
     }
 
+    // Check if clearing staged cards - this shouldn't end the turn
+    if (move.type === 'clear_staged') {
+      return true; // Don't advance turn - player is just canceling their staged cards
+    }
+
     return false;
   }
 
@@ -749,7 +777,7 @@ export class GameOrchestrator {
           ...state,
           players: newPlayers,
           sleepingQueens: newSleepingQueens,
-          roseQueenBonus: state.roseQueenBonus ? { ...state.roseQueenBonus, pending: false } : undefined,
+          roseQueenBonus: undefined, // Clear the Rose Queen bonus completely
           lastAction: {
             playerId: move.playerId,
             playerName: player.name,

@@ -70,6 +70,9 @@ export class PlayDiscardCommand implements Command<GameState> {
     let newDeck = [...this.state.deck];
     let newDiscardPile = [...this.state.discardPile, ...cards];
 
+    // Track replacement cards drawn
+    const replacementCards = [];
+
     // Draw new cards
     for (let i = 0; i < cards.length; i++) {
       if (newDeck.length === 0) {
@@ -78,7 +81,9 @@ export class PlayDiscardCommand implements Command<GameState> {
         newDiscardPile = [];
       }
       if (newDeck.length > 0) {
-        newHand.push(newDeck.pop()!);
+        const drawnCard = newDeck.pop()!;
+        newHand.push(drawnCard);
+        replacementCards.push(drawnCard);
       }
     }
 
@@ -92,7 +97,7 @@ export class PlayDiscardCommand implements Command<GameState> {
     // Cancel Rose Queen bonus if pending (player chose to discard instead)
     const roseQueenBonus = this.state.roseQueenBonus?.pending &&
                            this.state.roseQueenBonus?.playerId === this.move.playerId
-      ? { ...this.state.roseQueenBonus, pending: false }
+      ? undefined // Clear the Rose Queen bonus completely
       : this.state.roseQueenBonus;
 
     // Create action message for all players to see
@@ -118,9 +123,10 @@ export class PlayDiscardCommand implements Command<GameState> {
         playerId: this.move.playerId,
         playerName: player.name,
         actionType: 'discard',
-        cards: cards,
-        drawnCount: cards.length,
-        message: `${player.name} ${message} and drew ${cards.length} new card${cards.length > 1 ? 's' : ''}`,
+        cards: replacementCards, // Private: replacement cards picked up
+        playedCards: cards, // Public: cards that were discarded
+        drawnCount: replacementCards.length,
+        message: `${player.name} ${message} and drew ${replacementCards.length} new card${replacementCards.length > 1 ? 's' : ''}`,
         timestamp: Date.now()
       },
       updatedAt: Date.now(),

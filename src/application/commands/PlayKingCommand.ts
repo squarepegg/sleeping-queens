@@ -5,6 +5,8 @@ import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {KingRules} from '../../domain/rules/KingRules';
 import {TurnManager} from '../../domain/services/TurnManager';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
+import {ActionMessageBuilder} from '../utils/ActionMessageBuilder';
+import {Card} from '../../domain/models/Card';
 
 export class PlayKingCommand implements Command<GameState> {
   constructor(
@@ -61,6 +63,7 @@ export class PlayKingCommand implements Command<GameState> {
 
     // Draw replacement card only if hand is below 5 cards
     let drawnCount = 0;
+    const replacementCards: Card[] = [];
     if (newHand.length < 5) {
       if (newDeck.length === 0 && newDiscardPile.length > 0) {
         // Reshuffle
@@ -71,6 +74,7 @@ export class PlayKingCommand implements Command<GameState> {
         const drawnCard = newDeck.pop();
         if (drawnCard) {
           newHand.push(drawnCard);
+          replacementCards.push(drawnCard);
           drawnCount = 1;
         }
       }
@@ -133,10 +137,43 @@ export class PlayKingCommand implements Command<GameState> {
         playerId: this.move.playerId,
         playerName: this.state.players.find(p => p.id === this.move.playerId)?.name || 'Unknown',
         actionType: 'play_king',
-        cards: [newDiscardPile[newDiscardPile.length - 1]], // The king card just discarded
+        cards: replacementCards, // Private: replacement cards picked up
+        playedCards: [kingCard], // Public: king card that was played
         drawnCount,
-        message: `${this.state.players.find(p => p.id === this.move.playerId)?.name} woke ${targetQueen.name} (${targetQueen.points} points) with a King!${roseQueenBonus ? ' Rose Queen bonus activated!' : ''}${conflictMessage}`,
-        timestamp: Date.now()
+        message: ActionMessageBuilder.buildCompoundMessage({
+          playerName: this.state.players.find(p => p.id === this.move.playerId)?.name || 'Player',
+          primaryAction: ActionMessageBuilder.formatQueenAction(targetQueen, 'woke') + ' with a King',
+          cardsDrawn: drawnCount,
+          specialEffects: [
+            ...(roseQueenBonus ? ['Rose Queen bonus activated!'] : []),
+            ...(conflictMessage ? [conflictMessage.trim()] : [])
+          ].filter(Boolean)
+        }),
+        timestamp: Date.now(),
+        actionDetails: [
+          {
+            action: 'Played King',
+            detail: kingCard.name || 'King',
+            cards: [kingCard]
+          },
+          {
+            action: 'Woke Queen',
+            detail: `${targetQueen.name} (${targetQueen.points} points)`,
+            cards: [targetQueen]
+          },
+          ...(drawnCount > 0 ? [{
+            action: 'Drew card',
+            detail: 'Replacement card drawn'
+          }] : []),
+          ...(roseQueenBonus ? [{
+            action: 'Rose Queen Bonus',
+            detail: 'Choose another queen to wake!'
+          }] : []),
+          ...(conflictMessage ? [{
+            action: 'Queen Conflict',
+            detail: conflictMessage.replace(' But ', '').replace('!', '')
+          }] : [])
+        ]
       },
       updatedAt: Date.now(),
       version: this.state.version + 1

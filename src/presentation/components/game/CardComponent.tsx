@@ -84,7 +84,7 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
       case 'sm':
         return 'w-16 h-22';
       case 'lg':
-        return 'card-large';
+        return 'card-base'; // Use card-base for all cards to ensure consistent sizing
       default:
         return 'card-base';
     }
@@ -181,17 +181,21 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
           // Check if card has full rendering
           (() => {
             const renderer = CardRegistry.getRenderer(card);
+
             if (renderer?.renderFullCard) {
-              // Use full card rendering
-              return (
-                <>
-                  {renderer.renderFullCard(size, card)}
-                  {/* Special effects overlay */}
-                  {(selected || isHovered) && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />
-                  )}
-                </>
-              );
+              const fullCardContent = renderer.renderFullCard(size, card);
+              if (fullCardContent) {
+                // Use full card rendering only if it returns content
+                return (
+                  <>
+                    {fullCardContent}
+                    {/* Special effects overlay */}
+                    {(selected || isHovered) && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />
+                    )}
+                  </>
+                );
+              }
             }
 
             // Default card face rendering
@@ -226,6 +230,13 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
                       {(card as NumberCard).value}
                     </div>
                   </>
+                )}
+
+                {/* Points badge for queen cards */}
+                {card.type === 'queen' && (
+                  <div className="absolute bottom-1 sm:bottom-2 right-1 sm:right-2 bg-yellow-400 text-black text-xs-responsive sm:text-xs font-bold w-5 sm:w-6 h-5 sm:h-6 rounded-full flex items-center justify-center border border-purple-800">
+                    {(card as Queen).points}
+                  </div>
                 )}
 
                 {/* Special effects overlay */}

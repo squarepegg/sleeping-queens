@@ -2,6 +2,9 @@
 import React, {createContext, useCallback, useContext, useEffect, useReducer} from 'react';
 import {GameMove, MoveValidationResult} from '@/domain/models/GameMove';
 import {GameState} from '@/domain/models/GameState';
+
+// Type for frontend moves where moveId is optional (will be added by playMove)
+type FrontendMove = Omit<GameMove, 'moveId'> & { moveId?: string };
 // MIGRATION: Using GameEngineAdapter with new clean architecture
 import {GameEngineAdapter as SleepingQueensGame} from '@/application/adapters/GameEngineAdapter';
 import {gameApiService} from '@/services/GameApiService';
@@ -144,7 +147,7 @@ interface GameContextType extends GameContextState {
     initializeGame: (gameId: string) => Promise<void>;
     createGame: (maxPlayers?: number) => Promise<string | null>;
     startGame: () => Promise<boolean>; // For backward compatibility
-    playMove: (move: GameMove) => Promise<MoveValidationResult>;
+    playMove: (move: FrontendMove) => Promise<MoveValidationResult>;
     joinGame: (roomCode: string) => Promise<{ success: boolean; gameId?: string }>;
     leaveGame: () => Promise<void>;
     clearError: () => void;
@@ -357,7 +360,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
     }, [user, handleGameStateUpdate, handlePlayerJoined, handleConnectionChange]);
 
     // Play a move using optimistic updates
-    const playMove = useCallback(async (move: GameMove): Promise<MoveValidationResult> => {
+    const playMove = useCallback(async (move: FrontendMove): Promise<MoveValidationResult> => {
         if (!state.gameState || !gameEngineRef.current || !currentGameId.current) {
             return { isValid: false, error: 'Game not initialized' };
         }
@@ -374,7 +377,32 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             return validation;
         }
 
-        // Create optimistic state
+        // Check if this move could potentially win the game and has uncertainty
+        const shouldSkipOptimistic = (() => {
+            // For Knight moves, check if stealing the queen could win
+            if (move.type === 'play_knight' && state.gameState) {
+                const player = state.gameState.players.find(p => p.id === user?.id);
+                if (player) {
+                    // Check if this could be the winning move (4 queens already or close to 50 points)
+                    if (player.queens.length >= 4 || player.score >= 40) {
+                        // Skip optimistic update since we can't know if opponent has Dragon
+                        console.log('[GameContext] Skipping optimistic update for potential winning Knight move');
+                        return true;
+                    }
+                }
+            }
+            // Similar check for Potion that could win by putting opponent below win threshold
+            if (move.type === 'play_potion' && move.targetPlayer && state.gameState) {
+                // Skip optimistic for potion attacks on opponents (can't know if they have Wand)
+                if (move.targetPlayer !== user?.id) {
+                    console.log('[GameContext] Skipping optimistic update for Potion attack on opponent');
+                    return true;
+                }
+            }
+            return false;
+        })();
+
+        // Create optimistic state only if we should
         const optimisticEngine = new SleepingQueensGame(state.gameState);
         const result = optimisticEngine.playMove(moveWithId);
 
@@ -382,10 +410,10 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             return result;
         }
 
-        const optimisticState = optimisticEngine.getState();
+        const optimisticState = shouldSkipOptimistic ? null : optimisticEngine.getState();
 
         // Check if current player drew cards (hand size increased)
-        if (user?.id && state.gameState) {
+        if (user?.id && state.gameState && optimisticState) {
             const currentPlayer = state.gameState.players.find(p => p.id === user.id);
             const newPlayer = optimisticState.players.find(p => p.id === user.id);
 
@@ -413,8 +441,10 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             }
         }
 
-        // Apply optimistically to UI (only for this client)
-        dispatch({ type: 'SET_OPTIMISTIC_STATE', gameState: optimisticState, moveId: moveWithId.moveId! });
+        // Apply optimistically to UI only if we have an optimistic state
+        if (optimisticState) {
+            dispatch({ type: 'SET_OPTIMISTIC_STATE', gameState: optimisticState, moveId: moveWithId.moveId! });
+        }
 
         // Don't broadcast from client - server will handle broadcasting
         // This ensures single source of truth and prevents race conditions

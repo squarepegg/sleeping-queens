@@ -52,7 +52,7 @@ export const HowToPlay: React.FC = () => {
               <span className="text-2xl">⚔️</span>
               <div>
                 <p className="text-white font-medium">Knights</p>
-                <p className="text-xs text-red-200">Steal opponents' queens</p>
+                <p className="text-xs text-red-200">Steal opponents&apos; queens</p>
               </div>
             </div>
           </div>

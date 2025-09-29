@@ -5,6 +5,8 @@ import {GameMove, MoveValidationResult} from '../../domain/models/GameMove';
 import {KnightRules} from '../../domain/rules/KnightRules';
 import {TurnManager} from '../../domain/services/TurnManager';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
+import {ActionMessageBuilder} from '../utils/ActionMessageBuilder';
+import {Card} from '../../domain/models/Card';
 
 export class PlayKnightCommand implements Command<GameState> {
   constructor(
@@ -87,6 +89,7 @@ export class PlayKnightCommand implements Command<GameState> {
 
       // Draw replacement card for attacker only if hand is below 5 cards
       let drawnCount = 0;
+      const replacementCards: Card[] = [];
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
@@ -97,6 +100,7 @@ export class PlayKnightCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
           if (drawnCard) {
             newAttackerHand.push(drawnCard);
+            replacementCards.push(drawnCard);
             drawnCount = 1;
           }
         }
@@ -126,10 +130,31 @@ export class PlayKnightCommand implements Command<GameState> {
           playerId: this.move.playerId,
           playerName: player.name,
           actionType: 'play_knight',
-          cards: [knightCard],
+          cards: replacementCards, // Private: replacement cards picked up
+          playedCards: [knightCard], // Public: knight card that was played
           drawnCount,
           message: `${player.name} played Knight, waiting for ${targetPlayer.name} to respond...`,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          actionDetails: [
+            {
+              action: 'Played Knight',
+              detail: 'Initiating attack',
+              cards: [knightCard]
+            },
+            {
+              action: 'Target',
+              detail: `${targetQueen.name} from ${targetPlayer.name}`,
+              cards: [targetQueen]
+            },
+            {
+              action: 'Waiting',
+              detail: `${targetPlayer.name} can block with Dragon`
+            },
+            ...(drawnCount > 0 ? [{
+              action: 'Drew card',
+              detail: 'Replacement card drawn'
+            }] : [])
+          ]
         },
         updatedAt: Date.now(),
         version: this.state.version + 1
@@ -152,6 +177,7 @@ export class PlayKnightCommand implements Command<GameState> {
 
       // Draw replacement card for attacker only if hand is below 5 cards
       let drawnCount = 0;
+      const replacementCards: Card[] = [];
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
@@ -162,6 +188,7 @@ export class PlayKnightCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
           if (drawnCard) {
             newAttackerHand.push(drawnCard);
+            replacementCards.push(drawnCard);
             drawnCount = 1;
           }
         }
@@ -193,10 +220,31 @@ export class PlayKnightCommand implements Command<GameState> {
           playerId: this.move.playerId,
           playerName: player.name,
           actionType: 'play_knight',
-          cards: [knightCard],
+          cards: replacementCards, // Private: replacement cards picked up
+          playedCards: [knightCard], // Public: knight card that was played
           drawnCount,
-          message: `${player.name} used Knight to steal ${targetQueen.name} (${targetQueen.points} points) from ${targetPlayer?.name}!`,
-          timestamp: Date.now()
+          message: ActionMessageBuilder.buildCompoundMessage({
+            playerName: player.name,
+            primaryAction: ActionMessageBuilder.formatQueenSteal(targetQueen, targetPlayer?.name || 'Unknown'),
+            cardsDrawn: drawnCount
+          }),
+          timestamp: Date.now(),
+          actionDetails: [
+            {
+              action: 'Played Knight',
+              detail: 'Successful attack',
+              cards: [knightCard]
+            },
+            {
+              action: 'Stole Queen',
+              detail: `${targetQueen.name} (${targetQueen.points} points) from ${targetPlayer?.name}`,
+              cards: [targetQueen]
+            },
+            ...(drawnCount > 0 ? [{
+              action: 'Drew card',
+              detail: 'Replacement card drawn'
+            }] : [])
+          ]
         },
         updatedAt: Date.now(),
         version: this.state.version + 1

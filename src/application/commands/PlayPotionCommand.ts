@@ -5,6 +5,8 @@ import {Command} from '../ports/Command';
 import {PotionRules} from '../../domain/rules/PotionRules';
 import {ScoreCalculator} from '../../domain/services/ScoreCalculator';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
+import {ActionMessageBuilder} from '../utils/ActionMessageBuilder';
+import {Card} from '../../domain/models/Card';
 
 export class PlayPotionCommand implements Command<GameState> {
   constructor(
@@ -27,7 +29,8 @@ export class PlayPotionCommand implements Command<GameState> {
 
     if (targetPlayerId && targetQueenId) {
       // Stealing opponent's queen
-      return this.stealOpponentQueen(targetPlayerId, targetQueenId);
+      const queenId = typeof targetQueenId === 'string' ? targetQueenId : targetQueenId.id || targetQueenId;
+      return this.stealOpponentQueen(targetPlayerId, queenId);
     }
 
     // Handle queen selection after potion use (for sleeping queens)
@@ -80,6 +83,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
       // Draw replacement card only if hand is below 5 cards
       let drawnCount = 0;
+      const replacementCards: Card[] = [];
       if (newHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
@@ -89,6 +93,7 @@ export class PlayPotionCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
         if (drawnCard) {
           newHand.push(drawnCard);
+          replacementCards.push(drawnCard);
           drawnCount = 1;
         }
         }
@@ -114,7 +119,8 @@ export class PlayPotionCommand implements Command<GameState> {
           playerId: this.move.playerId,
           playerName: player.name,
           actionType: 'play_potion',
-          cards: [potionCard],
+          cards: replacementCards, // Private: replacement cards picked up
+          playedCards: [potionCard], // Public: potion card that was played
           drawnCount,
           message: `${player.name} played Sleeping Potion, waiting for ${targetPlayer.name} to respond...`,
           timestamp: Date.now()
@@ -134,6 +140,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
       // Draw replacement card for attacker only if hand is below 5 cards
       let drawnCount = 0;
+      const replacementCards: Card[] = [];
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           newDeck = [...CardShuffler.shuffle([...newDiscardPile])];
@@ -143,6 +150,7 @@ export class PlayPotionCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
         if (drawnCard) {
           newAttackerHand.push(drawnCard);
+          replacementCards.push(drawnCard);
           drawnCount = 1;
         }
         }
@@ -178,9 +186,14 @@ export class PlayPotionCommand implements Command<GameState> {
           playerId: this.move.playerId,
           playerName: player.name,
           actionType: 'play_potion',
-          cards: [potionCard],
+          cards: replacementCards, // Private: replacement cards picked up
+          playedCards: [potionCard], // Public: potion card that was played
           drawnCount,
-          message: `${player.name} used Sleeping Potion to put ${targetPlayer.name}'s ${targetQueen.name} to sleep!`,
+          message: ActionMessageBuilder.buildCompoundMessage({
+            playerName: player.name,
+            primaryAction: ActionMessageBuilder.formatQueenSleep(targetQueen, targetPlayer.name),
+            cardsDrawn: drawnCount
+          }),
           timestamp: Date.now()
         },
         updatedAt: Date.now(),
@@ -212,6 +225,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
     // Draw replacement card only if hand is below 5 cards
     let drawnCount = 0;
+    const replacementCards: Card[] = [];
     if (newHand.length < 5) {
       if (newDeck.length === 0) {
         // Reshuffle
@@ -222,6 +236,7 @@ export class PlayPotionCommand implements Command<GameState> {
         const drawnCard = newDeck.pop();
         if (drawnCard) {
           newHand.push(drawnCard);
+          replacementCards.push(drawnCard);
           drawnCount = 1;
         }
       }
@@ -250,7 +265,8 @@ export class PlayPotionCommand implements Command<GameState> {
         playerId: this.move.playerId,
         playerName: player.name,
         actionType: 'play_potion',
-        cards: [potionCard],
+        cards: replacementCards, // Private: replacement cards picked up
+        playedCards: [potionCard], // Public: potion card that was played
         drawnCount,
         message: `${player.name} played Sleeping Potion and is selecting a queen to wake...`,
         timestamp: Date.now()

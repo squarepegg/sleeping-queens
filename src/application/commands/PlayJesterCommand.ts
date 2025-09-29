@@ -5,6 +5,7 @@ import {Command} from '../ports/Command';
 import {JesterRules} from '../../domain/rules/JesterRules';
 import {ScoreCalculator} from '../../domain/services/ScoreCalculator';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
+import {Card} from '../../domain/models/Card';
 
 export class PlayJesterCommand implements Command<GameState> {
   constructor(
@@ -20,7 +21,7 @@ export class PlayJesterCommand implements Command<GameState> {
     // Return message for successful jester reveal
     if (this.state.jesterReveal?.revealedCard?.type === 'number') {
       const value = (this.state.jesterReveal.revealedCard as any).value || 1;
-      const targetPlayer = this.state.players.find(p => p.id === this.state.jesterReveal!.targetPlayerId);
+      const targetPlayer = this.state.players.find(p => p.id === this.state.jesterReveal!.targetPlayer);
       return `Revealed ${value}! ${targetPlayer?.name || 'Player'} gets to wake a queen!`;
     }
     return undefined;
@@ -79,6 +80,7 @@ export class PlayJesterCommand implements Command<GameState> {
     let jesterReveal;
     let targetIndex: number | undefined;
     let targetPlayer: any;
+    const replacementCards: Card[] = [];
 
     // Handle revealed card
     if (revealedCard.type === 'number') {
@@ -101,6 +103,7 @@ export class PlayJesterCommand implements Command<GameState> {
     } else {
       // Power card - player keeps it and plays again
       newHand.push(revealedCard);
+      replacementCards.push(revealedCard);
       jesterReveal = {
         revealedCard,
         targetPlayer: this.move.playerId, // Player who revealed keeps the card
@@ -126,7 +129,7 @@ export class PlayJesterCommand implements Command<GameState> {
     } else {
       // Power card revealed
       const cardName = revealedCard.name || revealedCard.type;
-      lastActionMessage = `${player.name} played a Jester and revealed ${cardName}! They keep it and play again!`;
+      lastActionMessage = `${player.name} played a Jester and revealed a ${cardName}! ${player.name} keeps it and gets another go!`;
     }
 
     return {
@@ -139,7 +142,8 @@ export class PlayJesterCommand implements Command<GameState> {
         playerId: this.move.playerId,
         playerName: player.name,
         actionType: 'play_jester',
-        cards: [jesterCard],
+        cards: replacementCards, // Private: power card kept (if revealed)
+        playedCards: [jesterCard], // Public: jester card that was played
         message: lastActionMessage,
         timestamp: Date.now()
       },
@@ -192,6 +196,7 @@ export class PlayJesterCommand implements Command<GameState> {
     let newDeck = [...this.state.deck];
     let newDiscardPile = [...this.state.discardPile];
     let jesterDrawnCount = 0; // Move this declaration outside the if block
+    const replacementCards: Card[] = [];
 
     if (jesterPlayer && jesterPlayerIndex !== -1) {
       // Get the current player state (might have been updated if they got the queen)
@@ -206,7 +211,9 @@ export class PlayJesterCommand implements Command<GameState> {
           newDiscardPile = [];
         }
         if (newDeck.length > 0) {
-          newJesterHand.push(newDeck.pop()!);
+          const drawnCard = newDeck.pop()!;
+          newJesterHand.push(drawnCard);
+          replacementCards.push(drawnCard);
           jesterDrawnCount = 1;
         }
       }
@@ -228,9 +235,20 @@ export class PlayJesterCommand implements Command<GameState> {
     }
 
     // Create detailed message about the queen selection
-    const queenMessage = roseQueenBonus
-      ? `${targetPlayer.name} woke ${queen.name} (${queen.points} points) and gets a bonus queen for the Rose Queen!`
-      : `${targetPlayer.name} woke ${queen.name} (${queen.points} points) from the Jester reveal!`;
+    const originalJesterPlayer = this.state.players.find(p => p.id === originalJesterPlayerId);
+    const jesterPlayerName = originalJesterPlayer?.name || 'Player';
+
+    let queenMessage = '';
+    if (roseQueenBonus) {
+      queenMessage = `${targetPlayer.name} woke ${queen.name} (${queen.points} points) and gets a bonus queen for the Rose Queen!`;
+    } else {
+      queenMessage = `${targetPlayer.name} woke ${queen.name} (${queen.points} points) from the Jester reveal!`;
+    }
+
+    // Add information about the jester player drawing a card if they drew one and are different from target
+    if (jesterDrawnCount > 0 && originalJesterPlayerId !== targetPlayerId) {
+      queenMessage += ` ${jesterPlayerName} drew a replacement card.`;
+    }
 
     // Clear jester reveal and return (orchestrator handles turn advancement)
     return {
@@ -245,12 +263,9 @@ export class PlayJesterCommand implements Command<GameState> {
         playerId: targetPlayerId,
         playerName: targetPlayer.name,
         actionType: 'play_jester',
-        cards: [],
+        cards: replacementCards,
         message: queenMessage,
-        timestamp: Date.now(),
-        // Track that the original Jester player drew a card (if they're different from target)
-        jesterPlayerDrawnCount: originalJesterPlayerId !== targetPlayerId ? jesterDrawnCount : 0,
-        jesterPlayerId: originalJesterPlayerId !== targetPlayerId ? originalJesterPlayerId : undefined
+        timestamp: Date.now()
       },
       updatedAt: Date.now()
     };

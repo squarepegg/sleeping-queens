@@ -132,8 +132,8 @@ describe('Rose Queen Bonus', () => {
     expect(player1.queens).toHaveLength(2);
     expect(player1.queens.map(q => q.name).sort()).toEqual(['Cat Queen', 'Rose Queen']);
 
-    // Rose Queen bonus should be completed
-    expect(state.roseQueenBonus?.pending).toBe(false);
+    // Rose Queen bonus should be cleared completely
+    expect(state.roseQueenBonus).toBeUndefined();
 
     // Turn should now advance to next player
     expect(state.currentPlayerIndex).toBe(1);
@@ -252,8 +252,8 @@ describe('Rose Queen Bonus', () => {
 
     state = game.getState();
 
-    // Rose Queen bonus should be cancelled
-    expect(state.roseQueenBonus?.pending).toBe(false);
+    // Rose Queen bonus should be cleared completely when cancelled
+    expect(state.roseQueenBonus).toBeUndefined();
 
     // Turn should advance to next player
     expect(state.currentPlayerIndex).toBe(1);
