@@ -2,6 +2,16 @@ import {ActionCard, Card, NumberCard, Queen} from '../models/Card';
 import {CardShuffler} from '@/infrastructure/random/CardShuffler';
 
 export const QUEENS: Queen[] = [
+  // 20 point queen
+  {
+    id: 'queen-heart',
+    type: 'queen',
+    name: 'Heart Queen',
+    points: 20,
+    description: 'Love conquers all dreams',
+    isAwake: false,
+  },
+  // 15 point queens
   {
     id: 'queen-cat',
     type: 'queen',
@@ -19,21 +29,22 @@ export const QUEENS: Queen[] = [
     isAwake: false,
   },
   {
-    id: 'queen-cake',
-    type: 'queen',
-    name: 'Cake Queen',
-    points: 15,
-    description: 'Sweet dreams are made of cake',
-    isAwake: false,
-  },
-  {
     id: 'queen-pancake',
     type: 'queen',
     name: 'Pancake Queen',
-    points: 10,
+    points: 15,
     description: 'Breakfast royalty',
     isAwake: false,
   },
+  {
+    id: 'queen-rainbow',
+    type: 'queen',
+    name: 'Rainbow Queen',
+    points: 15,
+    description: 'Colors of the dream world',
+    isAwake: false,
+  },
+  // 10 point queens
   {
     id: 'queen-ladybug',
     type: 'queen',
@@ -43,51 +54,36 @@ export const QUEENS: Queen[] = [
     isAwake: false,
   },
   {
-    id: 'queen-strawberry',
-    type: 'queen',
-    name: 'Strawberry Queen',
-    points: 5,
-    description: 'Berry sweet dreams',
-    isAwake: false,
-  },
-  {
-    id: 'queen-rainbow',
-    type: 'queen',
-    name: 'Rainbow Queen',
-    points: 5,
-    description: 'Colors of the dream world',
-    isAwake: false,
-  },
-  {
-    id: 'queen-heart',
-    type: 'queen',
-    name: 'Heart Queen',
-    points: 10,
-    description: 'Love conquers all dreams',
-    isAwake: false,
-  },
-  {
-    id: 'queen-star',
-    type: 'queen',
-    name: 'Star Queen',
-    points: 20,
-    description: 'Celestial majesty',
-    isAwake: false,
-  },
-  {
     id: 'queen-moon',
     type: 'queen',
     name: 'Moon Queen',
-    points: 15,
+    points: 10,
     description: 'Lunar light in darkness',
     isAwake: false,
   },
   {
-    id: 'queen-sun',
+    id: 'queen-peacock',
     type: 'queen',
-    name: 'Sun Queen',
-    points: 20,
-    description: 'Solar radiance',
+    name: 'Peacock Queen',
+    points: 10,
+    description: 'Feathers of beauty',
+    isAwake: false,
+  },
+  {
+    id: 'queen-sunflower',
+    type: 'queen',
+    name: 'Sunflower Queen',
+    points: 10,
+    description: 'Following the light',
+    isAwake: false,
+  },
+  // 5 point queens
+  {
+    id: 'queen-cake',
+    type: 'queen',
+    name: 'Cake Queen',
+    points: 5,
+    description: 'Sweet dreams are made of cake',
     isAwake: false,
   },
   {
@@ -96,6 +92,14 @@ export const QUEENS: Queen[] = [
     name: 'Rose Queen',
     points: 5,
     description: 'Thorns protect beauty',
+    isAwake: false,
+  },
+  {
+    id: 'queen-starfish',
+    type: 'queen',
+    name: 'Starfish Queen',
+    points: 5,
+    description: 'Ocean dreams',
     isAwake: false,
   },
 ];

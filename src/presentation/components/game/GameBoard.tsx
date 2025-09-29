@@ -54,6 +54,17 @@ export function GameBoard() {
   const { state, playMove, currentPlayer, isMyTurn, drawnCards, clearDrawnCards } = useGameState();
   const { user } = useAuth();
   const gameState = state.gameState;
+
+  // Debug drawn cards in GameBoard
+  React.useEffect(() => {
+    if (drawnCards) {
+      console.log('[GameBoard] Drawn cards state updated:', {
+        cardsCount: drawnCards.cards.length,
+        timestamp: drawnCards.timestamp,
+        cards: drawnCards.cards.map(c => ({ id: c.id, type: c.type, name: c.name }))
+      });
+    }
+  }, [drawnCards]);
   
   const [stagedCards, setStagedCards] = useState<Card[]>([]);
   const [stagingError, setStagingError] = useState<string | null>(null);
@@ -68,6 +79,7 @@ export function GameBoard() {
   const [previousPhase, setPreviousPhase] = useState<string | undefined>(undefined);
   const [lastDefenseTimestamp, setLastDefenseTimestamp] = useState<number | null>(null);
   const [hasShownWheelForGame, setHasShownWheelForGame] = useState<string | null>(null);
+  const [lastActionTimestamp, setLastActionTimestamp] = useState<number | null>(null);
   const [hasLoadedInitialHistory, setHasLoadedInitialHistory] = useState(false);
 
   // Configure sensors for both mouse and touch with better settings
@@ -824,6 +836,27 @@ export function GameBoard() {
   useEffect(() => {
     if (!gameState?.lastAction) return;
 
+    // Prevent showing old actions on initial page load
+    if (lastActionTimestamp === null) {
+      // First time seeing an action - check if it's recent (within last 5 seconds)
+      const isRecentAction = Date.now() - gameState.lastAction.timestamp < 5000;
+      setLastActionTimestamp(gameState.lastAction.timestamp);
+
+      // If the action is old (from before page load), don't show it
+      if (!isRecentAction) {
+        return;
+      }
+      // If it's recent, continue to show it
+    } else {
+      // Only process new actions
+      if (gameState.lastAction.timestamp <= lastActionTimestamp) {
+        return;
+      }
+
+      // Update the timestamp
+      setLastActionTimestamp(gameState.lastAction.timestamp);
+    }
+
     // Only show action result if this is a completed action (not staging)
     // Check if the action type indicates completion
     const isCompletedAction =
@@ -840,7 +873,7 @@ export function GameBoard() {
       // If it's just staging, ensure we're not showing action result
       setShowActionResult(false);
     }
-  }, [gameState?.lastAction?.timestamp]); // Re-trigger on timestamp change
+  }, [gameState?.lastAction?.timestamp, lastActionTimestamp]); // Re-trigger on timestamp change
 
   // Reset drawer dismissal when new staged cards appear from other players
   useEffect(() => {
@@ -853,6 +886,18 @@ export function GameBoard() {
       }
     }
   }, [gameState?.stagedCards, currentUserId]);
+
+  // Auto-dismiss drawer when it's your turn to select for jester reveal or Rose Queen bonus
+  useEffect(() => {
+    if (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer === currentUserId) {
+      // Auto-dismiss the drawer so player can see the queen selection UI
+      setDrawerDismissed(true);
+    }
+    if (gameState?.roseQueenBonus?.pending && gameState.roseQueenBonus.playerId === currentUserId) {
+      // Auto-dismiss for Rose Queen bonus selection too
+      setDrawerDismissed(true);
+    }
+  }, [jesterReveal, gameState?.roseQueenBonus, currentUserId]);
 
   // Track recent defense actions to prevent showing modals again
   useEffect(() => {
@@ -1154,8 +1199,8 @@ export function GameBoard() {
     // Start with all 12 queen IDs in their original positions - must match cards.ts
     const allQueenIds = [
       'queen-cat', 'queen-dog', 'queen-cake', 'queen-pancake',
-      'queen-ladybug', 'queen-strawberry', 'queen-rainbow', 'queen-heart',
-      'queen-star', 'queen-moon', 'queen-sun', 'queen-rose'
+      'queen-ladybug', 'queen-sunflower', 'queen-rainbow', 'queen-heart',
+      'queen-peacock', 'queen-moon', 'queen-starfish', 'queen-rose'
     ];
 
     // Map each position to either the queen object or null if awakened
@@ -1308,7 +1353,15 @@ export function GameBoard() {
               }
               playerName={
                 showActionResult && gameState?.lastAction
-                  ? gameState.lastAction.playerName
+                  ? (() => {
+                      console.log('[InfoDrawer] Using lastAction playerName:', {
+                        lastActionPlayerId: gameState.lastAction.playerId,
+                        lastActionPlayerName: gameState.lastAction.playerName,
+                        currentUserId,
+                        message: gameState.lastAction.message
+                      });
+                      return gameState.lastAction.playerName;
+                    })()
                   : Object.entries(gameState?.stagedCards || {})
                       .filter(([playerId]) => playerId !== currentUserId && gameState.stagedCards![playerId]?.length > 0)
                       .map(([playerId]) => players.find(p => p.id === playerId)?.name)[0]
@@ -1323,12 +1376,13 @@ export function GameBoard() {
           <InfoDrawer
             isOpen={!!(drawnCards && drawnCards.cards.length > 0)}
             cards={drawnCards?.cards || []}
-            message={`You drew ${drawnCards?.cards.length === 1 ? 'a card' : `${drawnCards?.cards.length} cards`}:`}
-            playerName="You"
+            message={`Here ${drawnCards?.cards.length === 1 ? 'is the card' : 'are the cards'} you picked up:`}
+            playerName="Cards Drawn"
             isProcessing={false}
             isPersistent={false}
             onDismiss={clearDrawnCards}
           />
+
 
 
 

@@ -1,21 +1,29 @@
 import React from 'react';
+import Image from 'next/image';
 import {
   Bug,
   Heart,
   Cake,
-  Cherry,
+  Cat,
+  Dog,
   Palette,
   Star,
   Moon,
   Sun,
   Flower2,
-  Sparkles
+  Sparkles,
+  Fish,
+  Feather,
+  Flower
 } from 'lucide-react';
 import { CardRenderer, CARD_ICON_SIZES } from '../CardRegistry';
 
 // Base Queen Card Renderer
 class QueenCardRenderer implements CardRenderer {
-  constructor(private icon: React.ComponentType<any>) {}
+  constructor(
+    private icon: React.ComponentType<any>,
+    private imagePath?: string
+  ) {}
 
   getIcon(size: 'sm' | 'md' | 'lg'): React.ReactNode {
     const Icon = this.icon;
@@ -27,78 +35,99 @@ class QueenCardRenderer implements CardRenderer {
   getClassName(): string {
     return 'queen-card';
   }
+
+  renderFullCard(size: 'sm' | 'md' | 'lg'): React.ReactNode {
+    if (!this.imagePath) {
+      // Fallback to icon rendering
+      return null;
+    }
+
+    return (
+      <div className="absolute inset-0 overflow-hidden rounded-lg">
+        <div className="absolute inset-0 scale-125 origin-center">
+          <Image
+            src={this.imagePath}
+            alt="Queen Card"
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+      </div>
+    );
+  }
 }
 
 // Individual Queen Renderers
 export class CatQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Bug); // Using Bug icon for Cat Queen (can be changed)
+    super(Cat, '/images/queens/cat-queen.png');
   }
 }
 
 export class DogQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Heart);
+    super(Dog, '/images/queens/dog-queen.png');
   }
 }
 
 export class CakeQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cake);
+    super(Cake, '/images/queens/cake-queen.png');
   }
 }
 
 export class PancakeQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cake);
+    super(Cake, '/images/queens/pancake-queen.png');
   }
 }
 
 export class LadybugQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Bug);
+    super(Bug, '/images/queens/ladybug-queen.png');
   }
 }
 
-export class StrawberryQueenRenderer extends QueenCardRenderer {
+export class StarfishQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cherry);
+    super(Fish, '/images/queens/starfish-queen.png');
   }
 }
 
 export class RainbowQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Palette);
+    super(Palette, '/images/queens/rainbow-queen.png');
   }
 }
 
 export class HeartQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Heart);
+    super(Heart, '/images/queens/heart-queen.png');
   }
 }
 
-export class StarQueenRenderer extends QueenCardRenderer {
+export class PeacockQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Star);
+    super(Feather, '/images/queens/peacock-queen.png');
   }
 }
 
 export class MoonQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Moon);
+    super(Moon, '/images/queens/moon-queen.png');
   }
 }
 
-export class SunQueenRenderer extends QueenCardRenderer {
+export class SunflowerQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Sun);
+    super(Flower, '/images/queens/sunflower-queen.png');
   }
 }
 
 export class RoseQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Flower2);
+    super(Flower2, '/images/queens/rose-queen.png');
   }
 }
 

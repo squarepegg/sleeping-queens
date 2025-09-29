@@ -86,6 +86,7 @@ export class PlayKnightCommand implements Command<GameState> {
       let newDeck = [...this.state.deck];
 
       // Draw replacement card for attacker only if hand is below 5 cards
+      let drawnCount = 0;
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
@@ -96,6 +97,7 @@ export class PlayKnightCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
           if (drawnCard) {
             newAttackerHand.push(drawnCard);
+            drawnCount = 1;
           }
         }
       }
@@ -125,6 +127,7 @@ export class PlayKnightCommand implements Command<GameState> {
           playerName: player.name,
           actionType: 'play_knight',
           cards: [knightCard],
+          drawnCount,
           message: `${player.name} played Knight, waiting for ${targetPlayer.name} to respond...`,
           timestamp: Date.now()
         },
@@ -148,6 +151,7 @@ export class PlayKnightCommand implements Command<GameState> {
       // So we no longer need to check for conflict here
 
       // Draw replacement card for attacker only if hand is below 5 cards
+      let drawnCount = 0;
       if (newAttackerHand.length < 5) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           // Reshuffle
@@ -158,6 +162,7 @@ export class PlayKnightCommand implements Command<GameState> {
           const drawnCard = newDeck.pop();
           if (drawnCard) {
             newAttackerHand.push(drawnCard);
+            drawnCount = 1;
           }
         }
       }
@@ -189,6 +194,7 @@ export class PlayKnightCommand implements Command<GameState> {
           playerName: player.name,
           actionType: 'play_knight',
           cards: [knightCard],
+          drawnCount,
           message: `${player.name} used Knight to steal ${targetQueen.name} (${targetQueen.points} points) from ${targetPlayer?.name}!`,
           timestamp: Date.now()
         },

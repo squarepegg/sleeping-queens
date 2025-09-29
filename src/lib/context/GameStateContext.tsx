@@ -16,14 +16,20 @@ import {filterGameStateForPlayer} from '../utils/gameStateFilter';
 
 interface GameContextState {
     gameState: GameState | null;
+    serverState: GameState | null; // The last confirmed state from server
+    optimisticState: GameState | null; // Optimistic state for pending moves
     connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
     lastError: string | null;
     loading: boolean;
     drawnCards: { cards: any[]; timestamp: number } | null; // Private to current player
+    pendingMoveId: string | null; // Track pending optimistic move
 }
 
 type GameAction =
     | { type: 'SET_GAME_STATE'; gameState: GameState }
+    | { type: 'SET_SERVER_STATE'; gameState: GameState }
+    | { type: 'SET_OPTIMISTIC_STATE'; gameState: GameState; moveId: string }
+    | { type: 'CLEAR_OPTIMISTIC_STATE' }
     | { type: 'SET_CONNECTION_STATUS'; status: GameContextState['connectionStatus'] }
     | { type: 'SET_ERROR'; error: string }
     | { type: 'SET_LOADING'; loading: boolean }
@@ -42,8 +48,45 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
             return {
                 ...state,
                 gameState: action.gameState,
+                serverState: action.gameState,
+                optimisticState: null,
+                pendingMoveId: null,
                 loading: false,
                 lastError: null,
+            };
+
+        case 'SET_SERVER_STATE':
+            // Only update if the new state is newer (higher version)
+            if (!state.serverState || !action.gameState.version ||
+                action.gameState.version >= (state.serverState.version || 0)) {
+                return {
+                    ...state,
+                    serverState: action.gameState,
+                    // If no optimistic state or server caught up, use server state
+                    gameState: state.pendingMoveId ? state.optimisticState || action.gameState : action.gameState,
+                    // Clear optimistic if server has caught up
+                    optimisticState: state.optimisticState && state.optimisticState.version <= action.gameState.version
+                        ? null : state.optimisticState,
+                    pendingMoveId: state.optimisticState && state.optimisticState.version <= action.gameState.version
+                        ? null : state.pendingMoveId,
+                };
+            }
+            return state;
+
+        case 'SET_OPTIMISTIC_STATE':
+            return {
+                ...state,
+                gameState: action.gameState,
+                optimisticState: action.gameState,
+                pendingMoveId: action.moveId,
+            };
+
+        case 'CLEAR_OPTIMISTIC_STATE':
+            return {
+                ...state,
+                gameState: state.serverState,
+                optimisticState: null,
+                pendingMoveId: null,
             };
 
         case 'SET_CONNECTION_STATUS':
@@ -61,6 +104,9 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         case 'RESET':
             return {
                 gameState: null,
+                serverState: null,
+                optimisticState: null,
+                pendingMoveId: null,
                 connectionStatus: 'disconnected',
                 lastError: null,
                 loading: false,
@@ -136,6 +182,9 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
     const { user } = useAuth();
     const [state, dispatch] = useReducer(gameReducer, {
         gameState: null,
+        serverState: null,
+        optimisticState: null,
+        pendingMoveId: null,
         connectionStatus: 'disconnected',
         lastError: null,
         loading: false,
@@ -144,10 +193,15 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
 
     const gameEngineRef = React.useRef<SleepingQueensGame | null>(null);
     const currentGameId = React.useRef<string | null>(null);
+    const previousGameStateRef = React.useRef<GameState | null>(null);
 
     // Handle game state updates from realtime service
     const handleGameStateUpdate = useCallback((gameState: GameState) => {
-        console.log('[GameContext] Received game state update from realtime');
+        console.log('[GameContext] Received game state update from realtime', {
+            version: gameState.version,
+            currentVersion: state.serverState?.version,
+            hasPendingMove: !!state.pendingMoveId
+        });
         console.log('[GameContext] lastAction in received state:', gameState.lastAction);
 
         // Filter the game state for the current player to preserve hand privacy
@@ -158,24 +212,69 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
 
         console.log('[GameContext] lastAction after filtering:', filteredState.lastAction);
 
-        // Check if current player drew cards (from server updates after turn ends)
-        if (user?.id && state.gameState) {
-            const currentPlayer = state.gameState.players.find(p => p.id === user.id);
-            const newPlayer = filteredState.players.find(p => p.id === user.id);
+        // Check if current player drew cards using lastAction
+        if (user?.id && filteredState.lastAction) {
+            const lastAction = filteredState.lastAction as any;
 
-            if (currentPlayer && newPlayer && newPlayer.hand.length > currentPlayer.hand.length) {
-                // Player drew cards - determine which ones are new
-                const oldHandIds = new Set(currentPlayer.hand.map(c => c.id));
-                const drawnCards = newPlayer.hand.filter(c => !oldHandIds.has(c.id));
+            // Check if this action was by the current player and involved drawing cards
+            // But ONLY show drawn cards if there's no pending attack (action is complete)
+            const hasPendingAttack = filteredState.pendingKnightAttack || filteredState.pendingPotionAttack;
 
-                if (drawnCards.length > 0) {
-                    // Track the drawn cards locally (private to this player)
-                    dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
+            // Also check for Jester case where original player drew a card after another player woke a queen
+            const isJesterPlayerWhoDrawCard = lastAction.jesterPlayerId === user.id && lastAction.jesterPlayerDrawnCount > 0;
 
-                    // Auto-clear after 8 seconds
-                    setTimeout(() => {
-                        dispatch({ type: 'CLEAR_DRAWN_CARDS' });
-                    }, 8000);
+            if ((lastAction.playerId === user.id && lastAction.drawnCount && lastAction.drawnCount > 0 && !hasPendingAttack) ||
+                isJesterPlayerWhoDrawCard) {
+                const effectiveDrawnCount = isJesterPlayerWhoDrawCard ? lastAction.jesterPlayerDrawnCount : lastAction.drawnCount;
+
+                console.log('[GameContext] Card draw detected from lastAction (action complete):', {
+                    playerId: isJesterPlayerWhoDrawCard ? lastAction.jesterPlayerId : lastAction.playerId,
+                    drawnCount: effectiveDrawnCount,
+                    actionType: lastAction.actionType,
+                    hasPendingAttack,
+                    isJesterCase: isJesterPlayerWhoDrawCard
+                });
+
+                // Get the player's current hand to show the newest cards
+                const currentPlayer = filteredState.players.find(p => p.id === user.id);
+
+                if (currentPlayer && previousGameStateRef.current) {
+                    const previousPlayer = previousGameStateRef.current.players.find(p => p.id === user.id);
+
+                    // Find which cards are new by comparing IDs
+                    const oldHandIds = new Set(previousPlayer?.hand.map(c => c.id) || []);
+                    const drawnCards = currentPlayer.hand.filter(c => !oldHandIds.has(c.id));
+
+                    console.log('[GameContext] Drawn cards identified:', {
+                        drawnCardsCount: drawnCards.length,
+                        drawnCards: drawnCards.map(c => ({ id: c.id, type: c.type, name: c.name }))
+                    });
+
+                    if (drawnCards.length > 0) {
+                        // Track the drawn cards locally (private to this player)
+                        dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
+
+                        // Auto-clear after 8 seconds
+                        setTimeout(() => {
+                            dispatch({ type: 'CLEAR_DRAWN_CARDS' });
+                        }, 8000);
+                    }
+                } else if (currentPlayer) {
+                    // If no previous state, just show the last N cards based on drawnCount
+                    const drawnCards = currentPlayer.hand.slice(-effectiveDrawnCount);
+
+                    console.log('[GameContext] Drawn cards (no previous state):', {
+                        drawnCardsCount: drawnCards.length,
+                        drawnCards: drawnCards.map(c => ({ id: c.id, type: c.type, name: c.name }))
+                    });
+
+                    if (drawnCards.length > 0) {
+                        dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
+
+                        setTimeout(() => {
+                            dispatch({ type: 'CLEAR_DRAWN_CARDS' });
+                        }, 8000);
+                    }
                 }
             }
         }
@@ -188,8 +287,12 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             gameEngineRef.current = new SleepingQueensGame(filteredState);
         }
 
-        dispatch({ type: 'SET_GAME_STATE', gameState: filteredState });
-    }, [user?.id, state.gameState]);
+        // Use SET_SERVER_STATE to properly handle version checking
+        dispatch({ type: 'SET_SERVER_STATE', gameState: filteredState });
+
+        // Update the ref for next comparison
+        previousGameStateRef.current = filteredState;
+    }, [user?.id, state.serverState, state.pendingMoveId]);
 
     // Handle connection status changes
     const handleConnectionChange = useCallback((status: GameContextState['connectionStatus']) => {
@@ -244,6 +347,9 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             // Set initial game state
             dispatch({ type: 'SET_GAME_STATE', gameState });
 
+            // Initialize the previousGameStateRef for card draw detection
+            previousGameStateRef.current = gameState;
+
         } catch (error) {
             console.error('[GameContext] Failed to initialize game:', error);
             dispatch({ type: 'SET_ERROR', error: error instanceof Error ? error.message : 'Failed to initialize game' });
@@ -288,6 +394,13 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
                 const oldHandIds = new Set(currentPlayer.hand.map(c => c.id));
                 const drawnCards = newPlayer.hand.filter(c => !oldHandIds.has(c.id));
 
+                console.log('[GameContext] Optimistic card draw detected:', {
+                    oldHandSize: currentPlayer.hand.length,
+                    newHandSize: newPlayer.hand.length,
+                    drawnCardsCount: drawnCards.length,
+                    drawnCards: drawnCards.map(c => ({ id: c.id, type: c.type, name: c.name }))
+                });
+
                 if (drawnCards.length > 0) {
                     // Track the drawn cards locally (private to this player)
                     dispatch({ type: 'SET_DRAWN_CARDS', cards: drawnCards });
@@ -301,7 +414,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
         }
 
         // Apply optimistically to UI (only for this client)
-        dispatch({ type: 'SET_GAME_STATE', gameState: optimisticState });
+        dispatch({ type: 'SET_OPTIMISTIC_STATE', gameState: optimisticState, moveId: moveWithId.moveId! });
 
         // Don't broadcast from client - server will handle broadcasting
         // This ensures single source of truth and prevents race conditions
@@ -320,24 +433,53 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             );
             
             if (!serverResult.isValid) {
-                // Rollback on server error
-                dispatch({ type: 'SET_GAME_STATE', gameState: state.gameState });
+                // Clear optimistic state and re-sync with server
+                dispatch({ type: 'CLEAR_OPTIMISTIC_STATE' });
+
+                // Force re-sync with server to get latest state
+                if (gameId && user?.id) {
+                    try {
+                        const latestState = await gameApiService.getPlayerGameView(gameId, user.id);
+                        if (latestState) {
+                            const filteredState = filterGameStateForPlayer(latestState, user.id);
+                            dispatch({ type: 'SET_GAME_STATE', gameState: filteredState });
+                        }
+                    } catch (syncError) {
+                        console.error('[GameContext] Failed to re-sync after error:', syncError);
+                    }
+                }
+
                 return serverResult;
             }
 
             // Server success - realtime subscription will handle the authoritative update
+            // The optimistic state will be cleared when server state catches up
             return { isValid: true };
 
         } catch (error) {
-            // Rollback on error
+            // Clear optimistic state and re-sync
             console.error('[GameContext] Move failed:', error);
-            dispatch({ type: 'SET_GAME_STATE', gameState: state.gameState });
-            return { 
-                isValid: false, 
-                error: error instanceof Error ? error.message : 'Move failed' 
+            dispatch({ type: 'CLEAR_OPTIMISTIC_STATE' });
+
+            // Force re-sync with server
+            if (gameId && user?.id) {
+                try {
+                    const latestState = await gameApiService.getPlayerGameView(gameId, user.id);
+                    if (latestState) {
+                        const filteredState = filterGameStateForPlayer(latestState, user.id);
+                        dispatch({ type: 'SET_GAME_STATE', gameState: filteredState });
+                    }
+                } catch (syncError) {
+                    console.error('[GameContext] Failed to re-sync after error:', syncError);
+                }
+            }
+
+            return {
+                isValid: false,
+                error: error instanceof Error ? error.message : 'Move failed'
             };
         }
-    }, [state.gameState]);
+    }, [state.gameState, state.serverState, state.pendingMoveId, user]);
 
     // Join a game by room code
     const joinGame = useCallback(async (roomCode: string): Promise<{ success: boolean; gameId?: string }> => {
@@ -476,6 +618,14 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
             initializeGame(gameId);
         }
     }, [gameId, user, initializeGame]);
+
+    // Update previousGameStateRef when state changes (for cases where page refreshes)
+    useEffect(() => {
+        if (state.gameState && !previousGameStateRef.current) {
+            console.log('[GameContext] Initializing previousGameStateRef from existing state');
+            previousGameStateRef.current = state.gameState;
+        }
+    }, [state.gameState]);
 
     // Cleanup on unmount
     useEffect(() => {

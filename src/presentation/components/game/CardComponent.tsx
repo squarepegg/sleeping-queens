@@ -185,7 +185,7 @@ export const CardComponent = forwardRef<HTMLDivElement, CardComponentProps>(({
               // Use full card rendering
               return (
                 <>
-                  {renderer.renderFullCard(size)}
+                  {renderer.renderFullCard(size, card)}
                   {/* Special effects overlay */}
                   {(selected || isHovered) && (
                     <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-lg pointer-events-none" />

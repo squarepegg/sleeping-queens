@@ -5,7 +5,7 @@ import { Card } from '@/domain/models/Card';
 export interface CardRenderer {
   getIcon(size: 'sm' | 'md' | 'lg'): React.ReactNode;
   getClassName(): string;
-  renderFullCard?(size: 'sm' | 'md' | 'lg'): React.ReactNode; // Optional full card rendering
+  renderFullCard?(size: 'sm' | 'md' | 'lg', card?: Card): React.ReactNode; // Optional full card rendering with card object
 }
 
 // Size mappings for consistent sizing across all card types

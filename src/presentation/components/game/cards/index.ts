@@ -15,12 +15,12 @@ import {
   CakeQueenRenderer,
   PancakeQueenRenderer,
   LadybugQueenRenderer,
-  StrawberryQueenRenderer,
+  StarfishQueenRenderer,
   RainbowQueenRenderer,
   HeartQueenRenderer,
-  StarQueenRenderer,
+  PeacockQueenRenderer,
   MoonQueenRenderer,
-  SunQueenRenderer,
+  SunflowerQueenRenderer,
   RoseQueenRenderer,
   DefaultQueenRenderer
 } from './implementations/QueenCards';
@@ -46,12 +46,12 @@ export function initializeCardRegistry() {
   CardRegistry.registerSpecific('queen-cake', () => new CakeQueenRenderer());
   CardRegistry.registerSpecific('queen-pancake', () => new PancakeQueenRenderer());
   CardRegistry.registerSpecific('queen-ladybug', () => new LadybugQueenRenderer());
-  CardRegistry.registerSpecific('queen-strawberry', () => new StrawberryQueenRenderer());
+  CardRegistry.registerSpecific('queen-starfish', () => new StarfishQueenRenderer());
   CardRegistry.registerSpecific('queen-rainbow', () => new RainbowQueenRenderer());
   CardRegistry.registerSpecific('queen-heart', () => new HeartQueenRenderer());
-  CardRegistry.registerSpecific('queen-star', () => new StarQueenRenderer());
+  CardRegistry.registerSpecific('queen-peacock', () => new PeacockQueenRenderer());
   CardRegistry.registerSpecific('queen-moon', () => new MoonQueenRenderer());
-  CardRegistry.registerSpecific('queen-sun', () => new SunQueenRenderer());
+  CardRegistry.registerSpecific('queen-sunflower', () => new SunflowerQueenRenderer());
   CardRegistry.registerSpecific('queen-rose', () => new RoseQueenRenderer());
 
   // Register default queen renderer for any unknown queens

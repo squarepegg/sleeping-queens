@@ -191,6 +191,7 @@ export class PlayJesterCommand implements Command<GameState> {
     // Draw replacement card for original jester player (only if hand < 5)
     let newDeck = [...this.state.deck];
     let newDiscardPile = [...this.state.discardPile];
+    let jesterDrawnCount = 0; // Move this declaration outside the if block
 
     if (jesterPlayer && jesterPlayerIndex !== -1) {
       // Get the current player state (might have been updated if they got the queen)
@@ -206,6 +207,7 @@ export class PlayJesterCommand implements Command<GameState> {
         }
         if (newDeck.length > 0) {
           newJesterHand.push(newDeck.pop()!);
+          jesterDrawnCount = 1;
         }
       }
 
@@ -245,7 +247,10 @@ export class PlayJesterCommand implements Command<GameState> {
         actionType: 'play_jester',
         cards: [],
         message: queenMessage,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        // Track that the original Jester player drew a card (if they're different from target)
+        jesterPlayerDrawnCount: originalJesterPlayerId !== targetPlayerId ? jesterDrawnCount : 0,
+        jesterPlayerId: originalJesterPlayerId !== targetPlayerId ? originalJesterPlayerId : undefined
       },
       updatedAt: Date.now()
     };

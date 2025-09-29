@@ -60,6 +60,7 @@ export class PlayKingCommand implements Command<GameState> {
     let newDeck = [...this.state.deck];
 
     // Draw replacement card only if hand is below 5 cards
+    let drawnCount = 0;
     if (newHand.length < 5) {
       if (newDeck.length === 0 && newDiscardPile.length > 0) {
         // Reshuffle
@@ -70,6 +71,7 @@ export class PlayKingCommand implements Command<GameState> {
         const drawnCard = newDeck.pop();
         if (drawnCard) {
           newHand.push(drawnCard);
+          drawnCount = 1;
         }
       }
     }
@@ -132,6 +134,7 @@ export class PlayKingCommand implements Command<GameState> {
         playerName: this.state.players.find(p => p.id === this.move.playerId)?.name || 'Unknown',
         actionType: 'play_king',
         cards: [newDiscardPile[newDiscardPile.length - 1]], // The king card just discarded
+        drawnCount,
         message: `${this.state.players.find(p => p.id === this.move.playerId)?.name} woke ${targetQueen.name} (${targetQueen.points} points) with a King!${roseQueenBonus ? ' Rose Queen bonus activated!' : ''}${conflictMessage}`,
         timestamp: Date.now()
       },

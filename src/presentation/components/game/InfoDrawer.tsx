@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, X, Sparkles, Clock } from 'lucide-react';
+import { ChevronDown, X, Sparkles, Clock } from 'lucide-react';
 import { Card } from '@/domain/models/Card';
 import { CardComponent } from './CardComponent';
 
@@ -55,18 +55,18 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
-            initial={{ y: '100%' }}
+            initial={{ y: '-100%' }}
             animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            exit={{ y: '-100%' }}
             transition={{
               type: 'spring',
               damping: 25,
               stiffness: 300,
               mass: 0.8
             }}
-            className="fixed bottom-0 left-0 right-0 z-40 pointer-events-auto"
+            className="fixed top-0 left-0 right-0 z-40 pointer-events-auto"
           >
-            <div className="bg-gradient-to-t from-gray-900 via-gray-900/98 to-gray-900/95 backdrop-blur-xl border-t-2 border-yellow-500/30 shadow-2xl">
+            <div className="bg-gradient-to-b from-gray-900 via-gray-900/98 to-gray-900/95 backdrop-blur-xl border-b-2 border-yellow-500/30 shadow-2xl">
               {/* Drag Handle */}
               <div className="flex justify-center py-2 cursor-pointer" onClick={handleMinimize}>
                 <div className="w-16 h-1.5 bg-yellow-500/50 rounded-full hover:bg-yellow-500/70 transition-colors" />
@@ -86,7 +86,8 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
 
                     <div>
                       <h3 className="text-xl sm:text-2xl font-bold text-white">
-                        {playerName ? `${playerName}'s Turn` : 'Action in Progress'}
+                        {playerName === 'Cards Drawn' ? 'You Picked Up' :
+                         playerName ? `${playerName}'s Turn` : 'Action in Progress'}
                       </h3>
                       <p className="text-sm sm:text-base text-gray-300 mt-1 leading-relaxed">
                         {message || 'Waiting for action...'}
@@ -154,9 +155,6 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
                   </motion.div>
                 ) : null}
               </div>
-
-              {/* Bottom safe area for mobile */}
-              <div className="h-safe-area-bottom" />
             </div>
           </motion.div>
         )}
@@ -166,20 +164,20 @@ export const InfoDrawer: React.FC<InfoDrawerProps> = ({
       <AnimatePresence>
         {showMinimizedButton && (
           <motion.button
-            initial={{ y: 100 }}
+            initial={{ y: -100 }}
             animate={{ y: 0 }}
-            exit={{ y: 100 }}
+            exit={{ y: -100 }}
             onClick={() => {
               setIsMinimized(false);
               setShowMinimizedButton(false);
             }}
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-40
                        bg-gradient-to-r from-yellow-500 to-orange-500 text-white
                        px-4 py-2 rounded-full shadow-lg hover:shadow-xl
                        transition-all hover:scale-105 flex items-center gap-2
                        pointer-events-auto"
           >
-            <ChevronUp className="w-4 h-4" />
+            <ChevronDown className="w-4 h-4" />
             <span className="font-medium text-sm">Show Info</span>
             {cards.length > 0 && (
               <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">

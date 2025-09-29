@@ -25,29 +25,29 @@
 
   @screen xs {
     .card-base {
-      width: 56px;
-      height: 78px;
-    }
-  }
-
-  @screen sm {
-    .card-base {
-      width: 64px;
-      height: 89px;
-    }
-  }
-
-  @screen md {
-    .card-base {
       width: 72px;
       height: 100px;
     }
   }
 
+  @screen sm {
+    .card-base {
+      width: 84px;
+      height: 117px;
+    }
+  }
+
+  @screen md {
+    .card-base {
+      width: 96px;
+      height: 134px;
+    }
+  }
+
   @screen lg {
     .card-base {
-      width: 80px;
-      height: 112px;
+      width: 108px;
+      height: 151px;
     }
   }
   
@@ -58,29 +58,29 @@
 
   @screen xs {
     .card-large {
-      width: 84px;
-      height: 117px;
-    }
-  }
-
-  @screen sm {
-    .card-large {
-      width: 96px;
-      height: 134px;
-    }
-  }
-
-  @screen md {
-    .card-large {
       width: 108px;
       height: 151px;
     }
   }
 
+  @screen sm {
+    .card-large {
+      width: 126px;
+      height: 176px;
+    }
+  }
+
+  @screen md {
+    .card-large {
+      width: 144px;
+      height: 201px;
+    }
+  }
+
   @screen lg {
     .card-large {
-      width: 120px;
-      height: 168px;
+      width: 160px;
+      height: 224px;
     }
   }
   
