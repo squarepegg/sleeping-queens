@@ -102,7 +102,7 @@ export class RealtimeService {
 
       // Subscribe the temporary channel before sending
       await new Promise<void>((resolve) => {
-        channel.subscribe((status) => {
+        channel?.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             resolve();
           }

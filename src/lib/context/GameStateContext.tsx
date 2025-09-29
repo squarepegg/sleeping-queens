@@ -727,6 +727,7 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
         try {
             // Play dragon card to block the attack
             const move: GameMove = {
+                moveId: `dragon-${Date.now()}-${Math.random()}`,
                 type: 'play_dragon',
                 playerId,
                 cards: [], // Dragon card will be found by the engine

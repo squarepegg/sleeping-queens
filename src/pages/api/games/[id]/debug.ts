@@ -71,7 +71,7 @@ async function handler(
 
     res.status(200).json(debugInfo);
   } catch (error) {
-    log.error({ error, gameId }, 'Debug endpoint error');
+    log.error({ error }, 'Debug endpoint error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

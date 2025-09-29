@@ -260,8 +260,8 @@ export class PlayJesterCommand implements Command<GameState> {
       jesterReveal: undefined,
       roseQueenBonus,
       lastAction: {
-        playerId: targetPlayerId,
-        playerName: targetPlayer.name,
+        playerId: originalJesterPlayerId,
+        playerName: jesterPlayerName,
         actionType: 'play_jester',
         cards: replacementCards,
         message: queenMessage,

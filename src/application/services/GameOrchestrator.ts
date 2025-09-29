@@ -1,7 +1,7 @@
 // Application service for orchestrating game operations
 import {GameState, LastAction} from '@/domain/models/GameState';
 import {GameMove, MoveValidationResult} from '@/domain/models/GameMove';
-import {Queen} from '@/domain/models/Card';
+import {Queen, Card} from '@/domain/models/Card';
 import {Command} from '../ports/Command';
 import {EventPublisher} from '../ports/EventPublisher';
 import {PlayKingCommand} from '../commands/PlayKingCommand';

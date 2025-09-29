@@ -29,7 +29,7 @@ export class PlayPotionCommand implements Command<GameState> {
 
     if (targetPlayerId && targetQueenId) {
       // Stealing opponent's queen
-      const queenId = typeof targetQueenId === 'string' ? targetQueenId : targetQueenId.id || targetQueenId;
+      const queenId = typeof targetQueenId === 'string' ? targetQueenId : (targetQueenId as any).id || targetQueenId;
       return this.stealOpponentQueen(targetPlayerId, queenId);
     }
 

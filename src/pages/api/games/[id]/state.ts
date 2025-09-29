@@ -77,7 +77,7 @@ async function handler(
       },
     });
   } catch (error) {
-    log.error({ error, gameId }, 'Get game state error');
+    log.error({ error }, 'Get game state error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

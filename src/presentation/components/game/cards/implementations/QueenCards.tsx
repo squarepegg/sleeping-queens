@@ -75,79 +75,79 @@ export class QueenCardRenderer implements CardRenderer {
 // Individual Queen Renderers
 export class CatQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cat, '/images/queens/cat-queen.png');
+    super();
   }
 }
 
 export class DogQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Dog, '/images/queens/dog-queen.png');
+    super();
   }
 }
 
 export class CakeQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cake, '/images/queens/cake-queen.png');
+    super();
   }
 }
 
 export class PancakeQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Cake, '/images/queens/pancake-queen.png');
+    super();
   }
 }
 
 export class LadybugQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Bug, '/images/queens/ladybug-queen.png');
+    super();
   }
 }
 
 export class StarfishQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Fish, '/images/queens/starfish-queen.png');
+    super();
   }
 }
 
 export class RainbowQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Palette, '/images/queens/rainbow-queen.png');
+    super();
   }
 }
 
 export class HeartQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Heart, '/images/queens/heart-queen.png');
+    super();
   }
 }
 
 export class PeacockQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Feather, '/images/queens/peacock-queen.png');
+    super();
   }
 }
 
 export class MoonQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Moon, '/images/queens/moon-queen.png');
+    super();
   }
 }
 
 export class SunflowerQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Flower, '/images/queens/sunflower-queen.png');
+    super();
   }
 }
 
 export class RoseQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Flower2, '/images/queens/rose-queen.png');
+    super();
   }
 }
 
 // Default Queen Renderer (for any queen without specific renderer)
 export class DefaultQueenRenderer extends QueenCardRenderer {
   constructor() {
-    super(Sparkles);
+    super();
   }
 }

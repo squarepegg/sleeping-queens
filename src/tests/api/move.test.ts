@@ -6,7 +6,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import handler from '../move';
+import handler from '@/pages/api/games/[id]/move';
 import { supabase } from '@/lib/supabase';
 import { GameEngineAdapter } from '@/application/adapters/GameEngineAdapter';
 

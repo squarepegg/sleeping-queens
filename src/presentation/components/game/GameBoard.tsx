@@ -1321,9 +1321,9 @@ export function GameBoard() {
                 // Show the action message for completed actions, Rose Queen bonus, or Jester reveal
                 // Check for pending attacks first to ensure we show waiting messages
                 (gameState?.pendingPotionAttack && gameState.pendingPotionAttack.attacker !== currentUserId)
-                  ? `${players.find(p => p.id === gameState.pendingPotionAttack.attacker)?.name || 'Player'} played Sleeping Potion, waiting for response...`
+                  ? `${players.find(p => p.id === gameState.pendingPotionAttack?.attacker)?.name || 'Player'} played Sleeping Potion, waiting for response...`
                   : (gameState?.pendingKnightAttack && gameState.pendingKnightAttack.attacker !== currentUserId)
-                    ? `${players.find(p => p.id === gameState.pendingKnightAttack.attacker)?.name || 'Player'} played Knight, waiting for response...`
+                    ? `${players.find(p => p.id === gameState.pendingKnightAttack?.attacker)?.name || 'Player'} played Knight, waiting for response...`
                     : (jesterReveal?.waitingForQueenSelection && jesterReveal.targetPlayer !== currentUserId)
                       ? (() => {
                           const targetPlayer = players.find(p => p.id === jesterReveal.targetPlayer);
@@ -1387,15 +1387,15 @@ export function GameBoard() {
 
           {/* Current Player Action Result Drawer - Shows current player's own completed actions INCLUDING drawn cards */}
           <InfoDrawer
-            isOpen={
+            isOpen={!!(
               !drawerDismissed &&
               showActionResult &&
               gameState?.lastAction &&
               gameState.lastAction.playerId === currentUserId
-            }
+            )}
             cards={
               // For current player, show private cards (replacement cards picked up)
-              gameState?.lastAction?.cards || []
+              [...(gameState?.lastAction?.cards || [])]
             }
             message={
               // If there's a pending attack from this player, make sure we show the waiting message

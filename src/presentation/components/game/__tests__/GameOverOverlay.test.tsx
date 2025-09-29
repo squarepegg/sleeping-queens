@@ -94,7 +94,8 @@ describe('GameOverOverlay', () => {
     });
 
     it('should trigger confetti animation for winner', async () => {
-      const confettiMock = require('canvas-confetti').default;
+      const confetti = await import('canvas-confetti');
+      const confettiMock = confetti.default;
       const winner = createMockPlayer('player1', 'Alice', [], 50);
       const players = [winner];
 
@@ -151,7 +152,8 @@ describe('GameOverOverlay', () => {
     });
 
     it('should not trigger confetti for losers', async () => {
-      const confettiMock = require('canvas-confetti').default;
+      const confetti = await import('canvas-confetti');
+      const confettiMock = confetti.default;
       confettiMock.mockClear();
 
       const winner = createMockPlayer('player1', 'Alice', [], 50);

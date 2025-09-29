@@ -99,7 +99,7 @@ async function handler(
       gameState,
     });
   } catch (error) {
-    log.error({ error, userId, username }, 'Create game error');
+    log.error({ error }, 'Create game error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

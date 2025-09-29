@@ -1,49 +1,56 @@
-import { GameState } from '../../domain/models/GameState';
-import { Card } from '../../domain/models/Card';
-import { Player } from '../../domain/models/Player';
+import { GameState } from '@/domain/models/GameState';
+import { Card, Queen } from '@/domain/models/Card';
+import { Player } from '@/domain/models/Player';
 
 export function createMockGameState(): GameState {
   const players: Player[] = [
     {
       id: 'player1',
       name: 'Player 1',
+      position: 0,
       hand: [],
       queens: [],
-      isActive: true
+      score: 0,
+      isConnected: true
     },
     {
       id: 'player2',
       name: 'Player 2',
+      position: 1,
       hand: [],
       queens: [],
-      isActive: true
+      score: 0,
+      isConnected: true
     },
     {
       id: 'player3',
       name: 'Player 3',
+      position: 2,
       hand: [],
       queens: [],
-      isActive: true
+      score: 0,
+      isConnected: true
     }
   ];
 
-  const drawPile: Card[] = [];
+  const deck: Card[] = [];
   const discardPile: Card[] = [];
-  const centerQueens: Card[] = [];
+  const sleepingQueens: Queen[] = [];
 
   return {
     id: 'test-game',
     players,
-    currentPlayer: 'player1',
-    drawPile,
+    currentPlayerIndex: 0,
+    currentPlayerId: 'player1',
+    sleepingQueens,
+    deck,
     discardPile,
-    centerQueens,
-    phase: 'play',
-    lastAction: null,
-    pendingKnightAttack: null,
-    pendingPotionAttack: null,
+    phase: 'playing',
     winner: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    roomCode: 'TEST123',
+    maxPlayers: 4,
+    version: 1
   };
 }

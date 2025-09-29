@@ -132,7 +132,7 @@ export const HandOverlay: React.FC<HandOverlayProps> = ({
                   <div className="w-16 h-20 bg-gradient-to-br from-white/90 to-gray-200 rounded-lg border-2 border-gray-300 shadow-xl flex flex-col items-center justify-center">
                     <div className="text-sm font-bold text-gray-800">
                       {card.type === 'number' && 'value' in card ? (
-                        <span className="text-2xl">{card.value}</span>
+                        <span className="text-2xl">{String(card.value)}</span>
                       ) : (
                         <span className="text-xs uppercase">{card.type}</span>
                       )}

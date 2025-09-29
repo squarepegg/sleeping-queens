@@ -100,7 +100,7 @@ async function handler(
       gameState,
     });
   } catch (error) {
-    log.error({ error, gameId }, 'Update state error');
+    log.error({ error }, 'Update state error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

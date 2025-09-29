@@ -64,7 +64,7 @@ async function handler(
       playerName: playerInGame.name
     });
   } catch (error) {
-    log.error({ error, gameId, playerId }, 'Player view error');
+    log.error({ error }, 'Player view error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

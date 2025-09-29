@@ -94,7 +94,7 @@ async function handler(
       success: true,
     });
   } catch (error) {
-    log.error({ error, username }, 'Login error');
+    log.error({ error }, 'Login error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

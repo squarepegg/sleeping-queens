@@ -51,19 +51,19 @@ async function handler(
     console.log(`Found ${movesData?.length || 0} moves for game ${gameId}`);
     // Log all moves for debugging
     movesData?.forEach(move => {
-      const moveData = move.move_data as any;
+      const moveData = (move as any).move_data;
       console.log('Move found:', {
         type: moveData.type,
-        playerId: move.player_id,
+        playerId: (move as any).player_id,
         message: moveData.message,
-        playerInfo: move.players
+        playerInfo: (move as any).players
       });
     });
 
     // Format the moves with player names
     const formattedMoves = (movesData || []).map(move => {
-      const moveData = move.move_data as any;
-      const playerInfo = move.players as any;
+      const moveData = (move as any).move_data;
+      const playerInfo = (move as any).players;
 
       // Debug system moves
       if (moveData.type === 'system' || moveData.type === 'system_message') {
@@ -72,7 +72,7 @@ async function handler(
 
       // Extract the message from lastAction if it exists
       let message = 'Unknown action';
-      let playerId = move.player_id;
+      let playerId = (move as any).player_id;
       let playerName = playerInfo?.name || 'Unknown';
 
       if (moveData.type === 'system_message' || moveData.type === 'system') {
@@ -85,8 +85,8 @@ async function handler(
         playerName = moveData.lastAction?.playerName || playerInfo?.name || 'Unknown';
       } else if (moveData.type) {
         // Use centralized MoveFormatter for consistent formatting
-        const players = [{ id: move.player_id, name: playerInfo?.name || 'Unknown' }];
-        const formattedMessage = moveFormatter.formatMove(moveData, players);
+        const players = [{ id: (move as any).player_id, name: playerInfo?.name || 'Unknown' }];
+        const formattedMessage = moveFormatter.formatMove(moveData, players as any);
 
         if (formattedMessage) {
           message = formattedMessage;
@@ -125,11 +125,11 @@ async function handler(
       }
 
       return {
-        id: move.id,
+        id: (move as any).id,
         playerId,
         playerName,
         message,
-        timestamp: new Date(move.created_at).getTime(),
+        timestamp: new Date((move as any).created_at).getTime(),
         moveType: moveData.type,
         cards: moveData.cards
       };
@@ -143,7 +143,7 @@ async function handler(
       gameId
     });
   } catch (error) {
-    log.error({ error, gameId }, 'Get move history error');
+    log.error({ error }, 'Get move history error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }

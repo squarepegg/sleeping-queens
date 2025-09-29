@@ -119,12 +119,12 @@ export default async function handler(
     }
 
     const updatedState = {
-      ...gameData.state,
+      ...(gameData as any).state,
       currentPlayerId: firstPlayerId,
       firstPlayerSelected: true
     };
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('games')
       .update({ state: updatedState })
       .eq('id', id);

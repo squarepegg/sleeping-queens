@@ -163,7 +163,7 @@ async function handler(
       gameState: newGameState,
     });
   } catch (error) {
-    log.error({ error, roomCode, username }, 'Join game error');
+    log.error({ error }, 'Join game error');
     res.status(500).json({ error: 'Internal server error' });
   }
 }
