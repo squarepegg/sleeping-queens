@@ -6,9 +6,42 @@ import {Card, NumberCard, Queen} from '../../../domain/models/Card';
 // Mock framer-motion to avoid animation issues in tests
 jest.mock('framer-motion', () => ({
   motion: {
-    div: React.forwardRef(({ children, whileHover, whileTap, transition, ...props }: any, ref: any) => 
+    div: React.forwardRef(({ children, whileHover, whileTap, transition, ...props }: any, ref: any) =>
       <div ref={ref} {...props}>{children}</div>
     )
+  }
+}));
+
+// Mock Next.js Image component
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img {...props} />
+  },
+}));
+
+// Mock CardRegistry to not use full rendering in tests
+jest.mock('../game/cards/CardRegistry', () => ({
+  CardRegistry: {
+    register: jest.fn(), // Mock register method
+    registerSpecific: jest.fn(), // Mock registerSpecific method
+    getRenderer: (card: any) => {
+      // Return a renderer without renderFullCard so tests see text content
+      return {
+        getIcon: () => <svg />,
+        getClassName: () => {
+          switch(card.type) {
+            case 'queen': return 'queen-card';
+            case 'king': return 'king-card';
+            case 'number': return 'number-card';
+            default: return '';
+          }
+        },
+        // Don't provide renderFullCard so tests use default text rendering
+        renderFullCard: undefined
+      };
+    }
   }
 }));
 
