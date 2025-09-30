@@ -379,17 +379,11 @@ export function GameStateProvider({ children, gameId }: GameStateProviderProps) 
 
         // Check if this move could potentially win the game and has uncertainty
         const shouldSkipOptimistic = (() => {
-            // For Knight moves, check if stealing the queen could win
-            if (move.type === 'play_knight' && state.gameState) {
-                const player = state.gameState.players.find(p => p.id === user?.id);
-                if (player) {
-                    // Check if this could be the winning move (4 queens already or close to 50 points)
-                    if (player.queens.length >= 4 || player.score >= 40) {
-                        // Skip optimistic update since we can't know if opponent has Dragon
-                        console.log('[GameContext] Skipping optimistic update for potential winning Knight move');
-                        return true;
-                    }
-                }
+            // For Knight moves, always skip optimistic updates to prevent premature win display
+            // We can't know if the opponent has a Dragon to block
+            if (move.type === 'play_knight' && state.gameState && move.targetPlayer !== user?.id) {
+                console.log('[GameContext] Skipping optimistic update for Knight attack (opponent may have Dragon)');
+                return true;
             }
             // Similar check for Potion that could win by putting opponent below win threshold
             if (move.type === 'play_potion' && move.targetPlayer && state.gameState) {

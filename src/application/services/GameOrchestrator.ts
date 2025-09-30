@@ -773,10 +773,17 @@ export class GameOrchestrator {
           ? `${player.name} woke ${queen.name} (${queen.points} points) as Rose Queen bonus!${conflictMessage}`
           : `${player.name} woke ${queen.name} (${queen.points} points) as Rose Queen bonus!`;
 
+        // Clear staged cards for this player (important: fixes King persistence bug)
+        const newStagedCards = { ...state.stagedCards };
+        if (newStagedCards && newStagedCards[move.playerId]) {
+          delete newStagedCards[move.playerId];
+        }
+
         return {
           ...state,
           players: newPlayers,
           sleepingQueens: newSleepingQueens,
+          stagedCards: newStagedCards, // Clear staged cards after Rose Queen bonus
           roseQueenBonus: undefined, // Clear the Rose Queen bonus completely
           lastAction: {
             playerId: move.playerId,

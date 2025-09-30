@@ -1169,7 +1169,7 @@ export function GameBoard() {
   // Determine if player can select queens
   // Player can select if they have a staged King, jester selection, or Rose Queen bonus
   const canSelectSleepingQueen = (
-    (hasKing && (isMyTurn || currentPlayerStagedCards.length > 0)) ||
+    (hasKing && isMyTurn && !jesterReveal && !gameState?.roseQueenBonus?.pending) ||
     (jesterReveal?.waitingForQueenSelection && jesterReveal?.targetPlayer === currentUserId) ||
     (gameState?.roseQueenBonus?.pending && gameState?.roseQueenBonus?.playerId === currentUserId)
   );
