@@ -223,6 +223,15 @@ sleeping-queens/
 3. Configure Row Level Security (RLS) policies
 4. Set up Realtime for `games`, `players`, and `game_moves` tables
 
+### Keep-Alive Setup (Free Tier)
+If you're using Supabase's free tier, set up automated health checks to prevent your project from pausing due to inactivity:
+
+1. **Deploy your application** to get a public URL
+2. **Set up UptimeRobot** (free) to ping your `/api/health` endpoint every 5 minutes
+3. **Detailed instructions:** See [SUPABASE_KEEPALIVE.md](SUPABASE_KEEPALIVE.md) for complete setup guide
+
+This ensures your database stays active and your game remains available 24/7.
+
 ## 📝 API Reference
 
 ### Game Management
@@ -233,6 +242,9 @@ sleeping-queens/
 
 ### Authentication
 - `POST /api/auth/login` - Create user session
+
+### System
+- `GET /api/health` - Health check endpoint (prevents Supabase inactivity pause)
 
 ## 🧪 Testing
 
